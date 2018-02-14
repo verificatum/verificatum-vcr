@@ -1,0 +1,130 @@
+#!/bin/sh
+
+# Copyright 2008-2018 Douglas Wikstrom
+#
+# This file is part of Verificatum Core Routines (VCR).
+#
+# VCR is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# VCR is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
+# Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public
+# License along with VCR. If not, see <http://www.gnu.org/licenses/>.
+
+# Remark. To us it seems obvious that some applications need access to
+# information about the hardware of a system, but apparently the
+# people implementing the various Un*xes have agreed to not agree on
+# anything when it comes to providing this information. Below we do
+# our best to compile readable strings for the CPU and OS. Needless to
+# say, these are horrible hacks and we expect to have to add another
+# section of hacks for each new system.
+#
+# WARNING! Only use this command for best effort information purposes.
+
+ERRORFILE=`date | sed "s/\s\s*//g"`
+{
+
+
+
+UNAME=`uname -a`
+
+set $UNAME
+
+OSNAME=$1
+KERNEL=$3
+
+linux_count_cpuinfo_fields() {
+    FIELD=`cat /proc/cpuinfo | grep -E "$2" | wc -l`
+    eval "$1=\"\$FIELD\""
+}
+
+linux_get_lscpu_field() {
+    FIELD=`lscpu | grep "$2" | sed "s/.*:[^0123456789]*\([0123456789][0123456789]*\)[^0123456].*/\1/"`
+    eval "$1=\"\$FIELD\""
+}
+
+if test $OSNAME = "Linux";
+then
+
+    ENDSTRING="\\n \\\l"
+    DISTR=`cat /etc/issue | grep "$ENDSTRING" | sed -e "s/.\{6\}\$//"`
+    OS="GNU/Linux ($DISTR)"
+
+    MODELRAW=`cat /proc/cpuinfo | grep "model name" | uniq | sed -e "s/.*: //"`
+    MODEL=`echo $MODELRAW | sed -e "s/@.*//" | sed "s/ CPU//"`
+    
+    linux_count_cpuinfo_fields PROC "processors"
+    linux_count_cpuinfo_fields CORES "core id"
+
+    MULT=`echo "${PROC} / ${CORES}" | bc`
+    if !( test ${MULT} = 1 );
+    then
+	CORESxTHREADS="${CORES}"
+    else
+	CORESxTHREADS="${CORES}x2"
+    fi
+    
+    linux_get_lscpu_field CPUFREQMHz "CPU max MHz"
+    if test x$CPUFREQMHz = x;
+    then
+	linux_get_lscpu_field CPUFREQMHz "CPU .*MHz"
+    fi
+    CPUFREQGHz=`echo "${CPUFREQMHz} / 1000" | bc -l | sed "s/\([[:digit:]][[:digit:]]*\.[[:digit:]][[:digit:]]\).*/\1/"`
+    
+elif test $OSNAME = "FreeBSD";
+then
+
+    OS="FreeBSD $KERNEL"
+    MODELRAW=`sysctl -n hw.model`
+    MODEL=`echo $MODELRAW | sed -e "s/@.*//" | sed "s/ CPU//"`
+    FREQUENCYRAW=`sysctl -n dev.cpu.0.freq`
+    if test x$FREQUENCYRAW = x;
+    then
+	FREQUENCYRAW=`sysctl -n hw.model | sed "s/.*@ \(.*\)GHz/\1/"`
+	if !( test x$FREQUENCYRAW = x );
+	then
+	    FREQUENCYRAW=`echo "$FREQUENCYRAW * 1000" | bc -l`
+	fi
+    fi
+    if test x$FREQUENCYRAW = x;
+    then
+	FREQUENCYRAW=0
+    fi
+    CPUFREQGHz=`echo "scale=2; $FREQUENCYRAW / 1000" | bc`
+    CORES=`sysctl -n hw.ncpu`
+    CHECKHTT=`cat /var/run/dmesg.boot | grep SMT`
+    if test x$CHECKHTT = x;
+    then
+	CORESxTHREADS="${CORES}"
+    else
+	CORESxTHREADS="${CORES}x2"
+    fi
+fi
+
+if test "x${OS}" = x;
+then
+    COMPUTER="Unknown model"
+    OS="Unknown operating system"
+else
+    COMPUTER="${MODEL} X${CORESxTHREADS} (${CPUFREQGHz}GHz)"
+fi
+
+} 2> /tmp/${ERRORFILE}
+
+ERRORS=`cat /tmp/${ERRORFILE}`
+
+if test "x${ERRORS}" = x;
+then
+
+    VERSION=M4_VERSION
+    printf "%s###%s###%s" "$COMPUTER" "$OS" "${VERSION}"
+else
+
+    printf "%s###%s###%s" "Unknown model" "Unknown operating system" "${VERSION}"
+fi

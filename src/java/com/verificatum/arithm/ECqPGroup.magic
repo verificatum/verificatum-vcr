@@ -1,0 +1,813 @@
+
+/*
+ * Copyright 2008-2018 Douglas Wikstrom
+ *
+ * This file is part of Verificatum Core Routines (VCR).
+ *
+ * VCR is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * VCR is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
+ * Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License along with VCR. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package com.verificatum.arithm;
+
+import java.util.List;
+import java.util.ArrayList;
+
+// VECJ_BEGIN
+
+import com.verificatum.vecj.VEC;
+
+import java.math.BigInteger;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+
+// VECJ_END
+
+import com.verificatum.annotation.CoberturaIgnore;
+import com.verificatum.crypto.RandomSource;
+import com.verificatum.eio.ByteTree;
+import com.verificatum.eio.ByteTreeReader;
+import com.verificatum.eio.EIOException;
+import com.verificatum.ui.Util;
+import com.verificatum.util.ArrayWorker;
+
+/**
+ * Elliptic curve group over a prime order field on Weierstrass normal
+ * form.
+ *
+ * @author Douglas Wikstrom
+ */
+public final class ECqPGroup extends BPGroup {
+
+    /**
+     * Underlying prime order field.
+     */
+    final PField primeOrderField;
+
+    /**
+     * First coefficient of the polynomial that defines the curve.
+     */
+    final PFieldElement A;
+
+    /**
+     * Constant coefficient of the polynomial that defines the curve.
+     */
+    final PFieldElement B;
+
+    /**
+     * Curve name.
+     */
+    final String curveName;
+
+    // VECJ_BEGIN
+
+    /**
+     * Stores pointers to native groups.
+     */
+    static Map<String, byte[]> nativePointers;
+
+    static {
+        nativePointers = new HashMap<String, byte[]>();
+    }
+
+    /**
+     * Pointer to field order in native space.
+     */
+    byte[] fieldOrdera;
+
+    /**
+     * Pointer to curve parameters in native space.
+     */
+    byte[] nativePointer;
+
+    // VECJ_END
+
+    /**
+     * Standard group generator.
+     */
+    final ECqPGroupElement g;
+
+    /**
+     * Group unit element.
+     */
+    final ECqPGroupElement one;
+
+    /**
+     * Returns true or false depending on if this code is compiled to
+     * a form that makes native calls or not.
+     *
+     * @return True or false depending on if this code makes native
+     * calls or not.
+     */
+    @CoberturaIgnore
+    public static boolean nativecode() {
+        // VECJ_BEGIN
+        return true;
+        // VECJ_END
+        // VECJ_PURE_JAVA_BEGIN
+        return false;
+        // VECJ_PURE_JAVA_END
+    }
+
+    /**
+     * Creates a new instance of the group from a byte tree.
+     *
+     * @param btr Representation of instance.
+     * @param rs Source of randomness.
+     * @param certainty Determines the probability that a non-prime
+     * modulus is deemed prime.
+     * @return Group given by the input.
+     *
+     * @throws ArithmFormatException If the input does not represent
+     * an instance.
+     */
+    public static ECqPGroup newInstance(final ByteTreeReader btr,
+                                        final RandomSource rs,
+                                        final int certainty)
+        throws ArithmFormatException {
+        try {
+
+            final String curveName = btr.readString();
+            return ECqPGroupParams.getECqPGroup(curveName);
+
+        } catch (EIOException eioe) {
+            throw new ArithmFormatException("Invalid curve name!", eioe);
+        }
+    }
+
+    /**
+     * Constructs an instance from the curve parameters.
+     *
+     * @param curveName Curve name.
+     * @param a Constant coefficient.
+     * @param b x-coefficient
+     * @param primeOrderField Field over which to perform calculations.
+     * @param order Order of the group.
+     * @param gx x-coordinate of the generator.
+     * @param gy y-coordinate of the generator.
+     * @throws ArithmFormatException If the input parameters are
+     * inconsistent.
+     */
+    protected ECqPGroup(final String curveName,
+                        final LargeInteger a,
+                        final LargeInteger b,
+                        final PField primeOrderField,
+                        final LargeInteger order,
+                        final LargeInteger gx,
+                        final LargeInteger gy)
+        throws ArithmFormatException {
+        super();
+        super.init(new PField(order));
+        this.curveName = curveName;
+        this.primeOrderField = primeOrderField;
+        this.A = new PFieldElement(primeOrderField, a);
+        this.B = new PFieldElement(primeOrderField, b);
+        this.g = new ECqPGroupElement(this, gx, gy);
+        this.one = ECqPGroupElement.one(this);
+
+        // VECJ_BEGIN
+
+        // Initialize pointer to native curve.
+        synchronized (nativePointers) {
+
+            if (nativePointers.containsKey(curveName)) {
+
+                nativePointer = nativePointers.get(curveName);
+
+            } else {
+
+                nativePointer = VEC.getCurve(curveName);
+                nativePointers.put(curveName, nativePointer);
+            }
+
+            // Make sure that the native curve and the Java curve are
+            // have identical parameters. This is a solid sanity check
+            // since these values are defined separately in Java and C
+            // space.
+            final BigInteger[] curveParams = VEC.getCurveParams(nativePointer);
+            assert curveParams[0]
+                .equals(primeOrderField.getOrder().toBigInteger());
+            assert curveParams[1].equals(a.toBigInteger());
+            assert curveParams[2].equals(b.toBigInteger());
+            assert curveParams[3].equals(gx.toBigInteger());
+            assert curveParams[4].equals(gy.toBigInteger());
+            assert curveParams[5].equals(order.toBigInteger());
+        }
+
+        this.fieldOrdera = primeOrderField.getOrder().toByteArray();
+
+        // VECJ_END
+    }
+
+    /**
+     * Returns the prime order field over which the curve is defined.
+     *
+     * @return Prime order field over which the curve is defined.
+     */
+    @CoberturaIgnore
+    public PField getPrimeOrderField() {
+        return primeOrderField;
+    }
+
+    /**
+     * Returns x-coefficient of the curve polynomial.
+     *
+     * @return x-coefficient of the curve polynomial.
+     */
+    @CoberturaIgnore
+    public LargeInteger getA() {
+        return A.toLargeInteger();
+    }
+
+    /**
+     * Returns constant coefficient of the curve polynomial.
+     *
+     * @return Constant coefficient of the curve polynomial.
+     */
+    @CoberturaIgnore
+    public LargeInteger getB() {
+        return B.toLargeInteger();
+    }
+
+    // Documented in PGroup.java
+
+    @Override
+    public String toString() {
+        return "ECqPGroup(" + curveName + ")";
+    }
+
+    /**
+     * Returns the name of the curve if any and otherwise null.
+     *
+     * @return Name of curve.
+     */
+    public String getCurveName() {
+        return curveName;
+    }
+
+    @CoberturaIgnore
+    @Override
+    public PGroupElement getg() {
+        return g;
+    }
+
+    @CoberturaIgnore
+    @Override
+    public PGroupElement getONE() {
+        return one;
+    }
+
+    @Override
+    public int getByteLength() {
+        return getONE().toByteArray().length;
+    }
+
+    @Override
+    public int getEncodeLength() {
+
+        // Add 2 bytes for size and 1 for padding.
+        return getPrimeOrderField().getEncodeLength() - 3;
+    }
+
+    @Override
+    public PGroupElement toElement(final ByteTreeReader btr)
+        throws ArithmFormatException {
+        return new ECqPGroupElement(this, btr, true);
+    }
+
+    @Override
+    public PGroupElement unsafeToElement(final ByteTreeReader btr) {
+        try {
+            return new ECqPGroupElement(this, btr, false);
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Malformed input!", afe);
+        }
+    }
+
+    /**
+     * Returns a group element representation of the input. More
+     * precisely, the x-coordinate contains data, two bytes
+     * representing the length, and two bytes of padding to ensure
+     * that there is a corresponding y-coordinate.
+     *
+     * @param byteArray Bytes to be encoded.
+     * @param startIndex Where to start reading.
+     * @param length Number of bytes to encode.
+     * @return Group element that encodes the input message.
+     */
+    @Override
+    public PGroupElement encode(final byte[] byteArray,
+                                final int startIndex,
+                                final int length) {
+
+        final LargeInteger modulus = getPrimeOrderField().getOrder();
+
+        // Byte length of input data bytes.
+        final int byteLen = Math.min(length, getEncodeLength());
+
+        // Input data bytes.
+        final byte[] dataBytes = new byte[byteLen];
+        System.arraycopy(byteArray, startIndex, dataBytes, 0, byteLen);
+
+        // Turn the data into a positive integer and add the length
+        // and padding as the least significant bytes.
+        LargeInteger xInteger = LargeInteger.toPositive(dataBytes);
+        xInteger = xInteger.shiftLeft(2 * 8);
+        xInteger = xInteger.add(new LargeInteger(dataBytes.length));
+        xInteger = xInteger.shiftLeft(8);
+
+        // Increase padding until we can interpret l as the x
+        // coefficient of a point of the curve.
+
+        LargeInteger y = null;
+
+        for (int i = 0; i < (1 << 8); i++) {
+
+            final LargeInteger fxInteger = equationf(xInteger).value;
+            if (fxInteger.legendre(modulus) == 1) {
+                y = sqrt(fxInteger);
+                break;
+            } else {
+                xInteger = xInteger.add(LargeInteger.ONE);
+            }
+        }
+
+        if (y == null) {
+            throw new ArithmError("Failed to encode!");
+        }
+
+        try {
+            return new ECqPGroupElement(this, xInteger, y);
+        } catch (ArithmFormatException e) {
+            throw new ArithmError("Failed to encode! "
+                                  + "(this should never happen)", e);
+        }
+    }
+
+    @Override
+    public PGroupElement randomElement(final RandomSource rs,
+                                       final int statDist) {
+        for (int j = 0; j < Integer.MAX_VALUE; j++) {
+
+            try {
+                final LargeInteger x =
+                    new LargeInteger(getPrimeOrderField().getOrder(),
+                                     statDist,
+                                     rs);
+                final LargeInteger fx = equationf(x).value;
+                final LargeInteger modulus = getPrimeOrderField().getOrder();
+
+                if (fx.legendre(modulus) == 1) {
+                    final LargeInteger y = sqrt(fx);
+                    return new ECqPGroupElement(this, x, y);
+                }
+            } catch (ArithmFormatException e) {
+                throw new ArithmError("Unexpected format exception", e);
+            }
+        }
+        throw new ArithmError("Failed to randomize a ro element");
+    }
+
+    @Override
+    // PMD_ANNOTATION @SuppressWarnings("PMD.CyclomaticComplexity")
+    public PGroupElementArray randomElementArray(final int size,
+                                                 final RandomSource rs,
+                                                 final int statDist) {
+
+        final LargeInteger modulus = getPrimeOrderField().getOrder();
+
+        final List<PGroupElement[]> partialResults =
+            new ArrayList<PGroupElement[]>();
+
+        final ECqPGroup pGroup = this;
+
+        int remaining = size;
+
+        final int threshold = 10000;
+        while (remaining > 0) {
+
+            int approxBatchSize =
+                Math.min(remaining, LargeIntegerArray.batchSize * 10);
+            if (approxBatchSize == 0) {
+                approxBatchSize = remaining;
+            }
+
+            // Generate valid x-coordinates.
+            //
+            // A random coordinate x has the property that f(x) is a
+            // quadratic residue with probability roughly 1/2. Thus,
+            // we pick twice as many as we need and then sift. Each
+            // batch will then be of roughly the right size.
+            //
+            // We do things in this way to make sure that the
+            // semantics of this method is identical to a plain
+            // sequential implementation.
+            final LargeInteger[] rxArray =
+                LargeInteger.random(2 * approxBatchSize, modulus, statDist, rs);
+            final LargeInteger[] rfxArray = new LargeInteger[rxArray.length];
+
+            final List<Integer> counts = new ArrayList<Integer>();
+            final ArrayWorker rxWorker = new ArrayWorker(rfxArray.length) {
+                public boolean divide() {
+                    return rfxArray.length > threshold;
+                }
+                public void work(final int start, final int end) {
+                    int count = 0;
+                    for (int i = start; i < end; i++) {
+                        rfxArray[i] = equationf(rxArray[i]).value;
+
+                        if (rfxArray[i].legendre(modulus) == 1) {
+                            count++;
+                        } else {
+                            rxArray[i] = null;
+                            rfxArray[i] = null;
+                        }
+                    }
+                    counts.add(count);
+                }
+            };
+            rxWorker.work();
+
+            // Total number of valid x-coordinates.
+            int count = 0;
+            for (final Integer countInteger : counts) {
+                count += countInteger.intValue();
+            }
+            count = Math.min(remaining, count);
+
+            // Pick only the valid x-coordinates.
+            final LargeInteger[] xArray = new LargeInteger[count];
+            final LargeInteger[] fxArray = new LargeInteger[count];
+
+            int i = 0;
+            int j = 0;
+            while (i < xArray.length) {
+                if (rxArray[j] != null) {
+                    xArray[i] = rxArray[j];
+                    fxArray[i] = rfxArray[j];
+                    i++;
+                }
+                j++;
+            }
+
+            // Computing the explicit y-coordinates is more expensive,
+            // so we thread this.
+            final PGroupElement[] partialResult =
+                new PGroupElement[xArray.length];
+            final ArrayWorker worker = new ArrayWorker(partialResult.length) {
+                public boolean divide() {
+                    return rfxArray.length > threshold;
+                }
+                public void work(final int start, final int end) {
+                    for (int i = start; i < end; i++) {
+
+                        try {
+                            LargeInteger y = sqrt(fxArray[i]);
+                            LargeInteger yp = modulus.sub(y);
+                            if (yp.compareTo(y) < 0) {
+                                y = yp;
+                            }
+                            partialResult[i] =
+                                new ECqPGroupElement(pGroup, xArray[i], y);
+
+                        } catch (ArithmFormatException afe) {
+                            throw new ArithmError("Failed to take root!", afe);
+                        }
+                    }
+                }
+            };
+            worker.work();
+            remaining = remaining - count;
+
+            partialResults.add(partialResult);
+        }
+        return pGroup.toElementArray(partialResults);
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof ECqPGroup)) {
+            return false;
+        }
+        final ECqPGroup other = (ECqPGroup) obj;
+
+        if (!A.value.equals(other.A.value)) {
+            return false;
+        }
+        if (!B.value.equals(other.B.value)) {
+            return false;
+        }
+        if (!primeOrderField.getOrder()
+            .equals(other.primeOrderField.getOrder())) {
+            return false;
+        }
+        return g.x.equals(other.g.x) && g.y.equals(other.g.y);
+    }
+
+
+    // VECJ_BEGIN
+
+    @Override
+    public PGroupElement expProd(final PGroupElement[] bases,
+                                 final LargeInteger[] integers,
+                                 final int bitLength) {
+
+        if (bases.length != integers.length) {
+            throw new ArithmError("Different lengths of inputs!");
+        }
+
+        // We need to collect partial results from multiple threads in
+        // a thread-safe way.
+        final List<PGroupElement> parts =
+            Collections.synchronizedList(new LinkedList<PGroupElement>());
+
+        final ECqPGroup pGroup = this;
+
+        final ArrayWorker worker =
+            new ArrayWorker(bases.length) {
+                @Override
+                public boolean divide() {
+                    return bases.length > expThreadThreshold;
+                }
+                @Override
+                public void work(final int start, final int end) {
+
+                    int batchSize = end - start;
+
+                    byte[][] basesx = new byte[batchSize][];
+                    byte[][] basesy = new byte[batchSize][];
+                    byte[][] integerBytes = new byte[batchSize][];
+
+                    for (int i = 0, j = start; i < batchSize; i++, j++) {
+
+                        basesx[i] =
+                            ((ECqPGroupElement) bases[j]).x.toByteArray();
+                        basesy[i] =
+                            ((ECqPGroupElement) bases[j]).y.toByteArray();
+                        integerBytes[i] = integers[j].toByteArray();
+                    }
+
+                    byte[][] res = VEC.smul(nativePointer,
+                                            basesx,
+                                            basesy,
+                                            integerBytes);
+
+                    try {
+                        PGroupElement part =
+                            new ECqPGroupElement(pGroup,
+                                                 new LargeInteger(res[0]),
+                                                 new LargeInteger(res[1]));
+                        parts.add(part);
+
+                    } catch (ArithmFormatException afe) {
+                        throw new ArithmError("Unable to create point!", afe);
+                    }
+                }
+            };
+        worker.work();
+
+        PGroupElement res = getONE();
+        for (final PGroupElement part : parts) {
+            res = res.mul(part);
+        }
+        return res;
+    }
+
+    //VECJ_END
+
+
+    // Documented in Marshalizable.java
+
+    @Override
+    public String humanDescription(final boolean verbose) {
+        return Util.className(this, verbose) + "(" + curveName + ")";
+    }
+
+    @Override
+    public ByteTree toByteTree() {
+        return ByteTree.stringToByteTree(curveName);
+    }
+
+
+    // Helper functions from here on.
+
+    /**
+     * Checks whether the point (x,y) is on the curve as defined by
+     * this group.
+     *
+     * @param x The x-coordinate of the point
+     * @param y The y-coordinate of the point
+     * @return true if the point is on the curve.
+     */
+    public boolean isPointOnCurve(final LargeInteger x,
+                                  final LargeInteger y) {
+        if (ECqPGroupElement.isUnity(x, y)) {
+            return true;
+        }
+        if (x.compareTo(LargeInteger.ZERO) < 0
+            || y.compareTo(LargeInteger.ZERO) < 0) {
+            return false;
+        }
+        if (x.compareTo(primeOrderField.getOrder()) >= 0
+            || y.compareTo(primeOrderField.getOrder()) >= 0) {
+            return false;
+        }
+        final PFieldElement pfey = new PFieldElement(primeOrderField, y);
+        final PFieldElement right = equationf(x);
+
+        return right.equals(pfey.mul(pfey));
+    }
+
+    /**
+     * Applies the curve's formula f(x) = x^3 + ax + b on the given
+     * parameter.
+     * @param x Parameter of the formula.
+     * @return Polynomial evaluated at the given point.
+     */
+    private PFieldElement equationf(final LargeInteger x) {
+        final PFieldElement pfex = new PFieldElement(primeOrderField, x);
+        PFieldElement right = pfex.mul(pfex).mul(pfex);
+        right = right.add(pfex.mul(A));
+        right = right.add(B);
+        return right;
+    }
+
+    // VECJ_PURE_JAVA_BEGIN
+
+    /**
+     * Computes the square root of an integer modulo a prime employing
+     * the Shanks-Tonelli algorithm.
+     *
+     * @param x Integer of which the square root is computed.
+     * @return Square root of the integer modulo the order of the
+     * underlying field.
+     */
+    public LargeInteger sqrt(final LargeInteger x) {
+
+        final LargeInteger p = getPrimeOrderField().getOrder();
+
+        final LargeInteger a = x.mod(p);
+
+        if (a.equals(LargeInteger.ZERO)) {
+            return LargeInteger.ZERO;
+        }
+
+        if (p.equals(LargeInteger.TWO)) {
+            return a;
+        }
+
+        LargeInteger v = null;
+
+        // p = 3 mod 4
+        if (p.testBit(0) && p.testBit(1)) {
+
+            // v = p + 1
+            v = p.add(LargeInteger.ONE);
+
+            // v = v / 4
+            v = v.shiftRight(2);
+
+            // return a^v mod p
+            // return --> a^((p + 1) / 4) mod p
+            return a.modPow(v, p);
+        }
+
+        // Compute k and s, where p = 2^s (2k+1) +1
+
+        // k = p - 1
+        LargeInteger k = p.sub(LargeInteger.ONE);
+        int s = 0;
+
+        // while k is even
+        while (!k.testBit(0)) {
+
+            // s = s + 1
+            s++;
+
+            // k = k / 2
+            k = k.shiftRight(1);
+        }
+
+        // k = k - 1
+        k = k.sub(LargeInteger.ONE);
+
+        // k = k / 2
+        k = k.shiftRight(1);
+
+        // r = a^k mod p
+        LargeInteger r = a.modPow(k, p);
+
+        // n = r^2 mod p
+        LargeInteger n = r.mul(r).mod(p);
+
+        // n = n * a mod p
+        n = n.mul(a).mod(p);
+
+        // r = r * a modp
+        r = r.mul(a).mod(p);
+
+        if (n.equals(LargeInteger.ONE)) {
+            return r;
+        }
+
+        // non-quadratic residue
+        LargeInteger z = LargeInteger.TWO; // z = 2
+
+        // while z quadratic residue
+        while (z.legendre(p) == 1) {
+
+            // z = z + 1
+            z = z.add(LargeInteger.ONE);
+        }
+
+        v = k;
+
+        // v = 2k
+        v = v.mul(LargeInteger.TWO);
+
+        // v = 2k + 1
+        v = v.add(LargeInteger.ONE);
+
+        // c = z^v mod p
+        LargeInteger c = z.modPow(v, p);
+
+        int t = 0;
+
+        while (n.compareTo(LargeInteger.ONE) > 0) {
+
+            // k = n
+            k = n;
+
+            // t = s
+            t = s;
+            s = 0;
+
+            // k != 1
+            while (!k.equals(LargeInteger.ONE)) {
+
+                // k = k^2 mod p
+                k = k.mul(k).mod(p);
+
+                // s = s + 1
+                s++;
+            }
+
+            // t = t - s
+            t -= s;
+
+            // v = 2^(t-1)
+            v = LargeInteger.ONE;
+            v = v.shiftLeft(t - 1);
+
+            // c = c^v mod p
+            c = c.modPow(v, p);
+
+            // r = r * c mod p
+            r = r.mul(c).mod(p);
+
+            // c = c^2 mod p
+            c = c.mul(c).mod(p);
+
+            // n = n * c mod p
+            n = n.mul(c).mod(p);
+        }
+        return r;
+    }
+
+    // VECJ_PURE_JAVA_END
+
+    // VECJ_BEGIN
+
+    /**
+     * Computes the square root of an integer modulo a prime employing
+     * the Shanks-Tonelli algorithm.
+     *
+     * @param a Integer of which the square root is computed.
+     * @return Square root of the integer modulo the order of the
+     * underlying field.
+     */
+    public LargeInteger sqrt(final LargeInteger a) {
+        final byte[] root = VEC.sqrt(a.toByteArray(), fieldOrdera);
+        return LargeInteger.toPositive(root);
+    }
+
+    // VECJ_END
+}

@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# Copyright 2008-2018 Douglas Wikstrom
+#
+# This file is part of Verificatum Core Routines (VCR).
+#
+# VCR is free software: you can redistribute it and/or modify it under
+# the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# VCR is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
+# Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public
+# License along with VCR. If not, see <http://www.gnu.org/licenses/>.
+
+# There is a bug in the JDK that makes
+# SecureRandom.getInstance("SHA1PRNG", "SUN") always seed itself from
+# /dev/random. Thus, if it blocks, then getInstance blocks as well. It
+# does not suffice to use -Djava.security.egd=file:/dev/urandom to
+# avoid this problem. THE WEIRD-LOOKING DOT IN THE PATH IS REALLY
+# NEEDED.
+
+dnl The M4_JVM_DATAMODEL is replaced by -d32 or -d64, by an m4
+dnl macro. The value used depends on the native wordlength. This is
+dnl *necessary* in some OS, e.g., Solaris, since the JVM otherwise
+dnl tries to execute in 32-bit mode instead of 64-bit mode. It is not
+dnl needed in Linux or FreeBSD.
+dnl
+# Add the particular jar files we use.
+export CLASSPATH=M4_ALL_JAR:${CLASSPATH}
+
+# Add the location of the native libraries to the library variables.
+export LIBRARY_PATH=M4_LIBDIR
+export LD_LIBRARY_PATH=M4_LIBDIR
+
+# Extract the name of this shell script without its path.
+COMMAND_NAME=$0
+COMMAND_NAME=${COMMAND_NAME##*/}
+
+if [ x${VERIFICATUM_RANDOM_SOURCE} = x ]; then
+   VERIFICATUM_RANDOM_SOURCE=~/.verificatum_random_source
+fi
+
+if [ x${VERIFICATUM_RANDOM_SEED} = x ]; then
+   VERIFICATUM_RANDOM_SEED=~/.verificatum_random_seed
+fi
+ 
+# If you want to be able to list and generate instances of your own
+# classes, you should set VERIFICATUM_VOG to be a comma-separated list
+# of classnames. This allows this command to list and generate
+# instances of every class in the same directory/package that
+# implements the
+# com.verificatum.ui.gen.Generator-interface. Alternatively, you can
+# use the -pkgs switch of this command.
+if [ x${VERIFICATUM_VOG} = x ]; then
+   VERIFICATUM_VOG=
+fi
+
+VERIFICATUM_VOG=${VERIFICATUM_VOG}:VERIFICATUM_VOG_BUILTIN
+
+java \
+M4_JVM_DATAMODEL \
+-Djava.security.egd=file:/dev/./urandom \
+com.verificatum.ui.gen.GeneratorTool \
+"$COMMAND_NAME" \
+"$VERIFICATUM_VOG" \
+"$VERIFICATUM_RANDOM_SOURCE" \
+"$VERIFICATUM_RANDOM_SEED" "$@"

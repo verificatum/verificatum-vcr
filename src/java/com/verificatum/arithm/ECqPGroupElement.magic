@@ -1,0 +1,651 @@
+
+/*
+ * Copyright 2008-2018 Douglas Wikstrom
+ *
+ * This file is part of Verificatum Core Routines (VCR).
+ *
+ * VCR is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * VCR is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General
+ * Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License along with VCR. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package com.verificatum.arithm;
+
+import java.util.Arrays;
+
+// VECJ_BEGIN
+
+import com.verificatum.vecj.VEC;
+
+import com.verificatum.util.ArrayWorker;
+
+// VECJ_END
+
+import com.verificatum.eio.ByteTree;
+import com.verificatum.eio.ByteTreeReader;
+import com.verificatum.eio.EIOException;
+import com.verificatum.eio.ExtIO;
+
+/**
+ * An implementation of a group element belonging to an instance of
+ * {@link ECqPGroup}.
+ *
+ * @author Douglas Wikstrom
+ */
+public final class ECqPGroupElement extends BPGroupElement {
+
+    /**
+     * Will be used for the "infinity" element of the group.
+     */
+    public static final LargeInteger MINUS_ONE = new LargeInteger(-1);
+
+    /**
+     * The x coordinate of this point.
+     */
+    LargeInteger x;
+
+    /**
+     * The y coordinate of this point.
+     */
+    LargeInteger y;
+
+    /**
+     * Constructs a new group element from its coordinates.
+     *
+     * @param pGroup Group which contains this element.
+     * @param x The x coordinate.
+     * @param y The y coordinate
+     * @throws ArithmFormatException If the input does not represent a
+     * point.
+     */
+    public ECqPGroupElement(final ECqPGroup pGroup,
+                            final LargeInteger x,
+                            final LargeInteger y)
+        throws ArithmFormatException {
+        super(pGroup);
+        if (!pGroup.isPointOnCurve(x, y)) {
+            final String s =
+                String.format("Given point is not on the described "
+                              + "curve! (x=%s y=%s)",
+                              x.value.toString(),
+                              y.value.toString());
+
+            throw new ArithmFormatException(s);
+        }
+        this.x = x;
+        this.y = y;
+    }
+
+    /**
+     * Constructs a new group element from its coordinates without any
+     * verification that the coordinates represents a point on the
+     * given curve.
+     *
+     * @param pGroup Group which contains this element.
+     * @param x The x coordinate.
+     * @param y The y coordinate
+     * @param ignored Ignored place holder to indicate instantiation
+     * without verification of input.
+     */
+    private ECqPGroupElement(final ECqPGroup pGroup,
+                             final LargeInteger x,
+                             final LargeInteger y,
+                             final boolean ignored) { // NOPMD
+        super(pGroup);
+        this.x = x;
+        this.y = y;
+    }
+
+    /**
+     * Creates an element of the group from the given representation.
+     *
+     * <p>
+     *
+     * WARNING! If the safe flag is set to false and the input is
+     * incorrectly formatted, then the output is undefined and no
+     * exception is thrown.
+     *
+     * @param pGroup Group to which the created element belongs.
+     * @param btr Representation of a group element.
+     * @param safe Indicates if the element should be verified or not.
+     *
+     * @throws ArithmFormatException If the input does not represent
+     * an element.
+     */
+    protected ECqPGroupElement(final ECqPGroup pGroup,
+                               final ByteTreeReader btr,
+                               final boolean safe)
+        throws ArithmFormatException {
+        super(pGroup);
+        try {
+
+            final int fieldByteLength = pGroup.primeOrderField.getByteLength();
+
+            final ByteTreeReader btrx = btr.getNextChild();
+            if (btrx.getRemaining() != fieldByteLength) {
+                throw new ArithmFormatException("Wrong byte length!");
+            }
+            final LargeInteger xcoeff = new LargeInteger(btrx);
+
+            final ByteTreeReader btry = btr.getNextChild();
+            if (btry.getRemaining() != fieldByteLength) {
+                throw new ArithmFormatException("Wrong byte length!");
+            }
+            final LargeInteger ycoeff = new LargeInteger(btry);
+
+            this.x = xcoeff;
+            this.y = ycoeff;
+
+            // We only perform costly verification if requested.
+            if (safe) {
+                verifyUnsafe();
+            }
+        } catch (EIOException eioe) {
+            throw new ArithmFormatException("Invalid byte tree format", eioe);
+        }
+    }
+
+    @Override
+    protected void verifyUnsafe() throws ArithmFormatException {
+        if (!((ECqPGroup) pGroup).isPointOnCurve(this.x, this.y)) {
+            throw new ArithmFormatException("Point is not on curve!");
+        }
+    }
+
+    // Implemented in PGroupElement.java.
+
+    @Override
+    public String toString() {
+        if (x.equals(MINUS_ONE)) {
+            return "(INFINITY)";
+        }
+        return String.format("(%s, %s)", x.toString(), y.toString());
+    }
+
+    @Override
+    public int decode(final byte[] array, final int startIndex) {
+
+        // Unit encodes nothing.
+        if (x.equals(MINUS_ONE)) {
+            return 0;
+        }
+
+        // Due to the fixed size of field elements this allows us to
+        // assume that bytes has a given size.
+        final PFieldElement elx =
+            ((ECqPGroup) pGroup).primeOrderField.toElement(getX());
+        final byte[] bytes = elx.toByteArray();
+
+        // Extract length.
+        final int length = ExtIO.readShort(bytes, bytes.length - 3);
+
+        // If the length is invalid, then we do nothing.
+        if (length < 0 || pGroup.getEncodeLength() < length) {
+            return 0;
+        }
+
+        // If the length is zero, then we do nothing.
+        if (length == 0) {
+            return 0;
+        }
+
+        // Copy the bytes.
+        System.arraycopy(bytes, bytes.length - 3 - length,
+                         array, startIndex,
+                         length);
+
+        return length;
+    }
+
+    // VECJ_PURE_JAVA_BEGIN
+    /**
+     * Compute the product of this element and the input.
+     *
+     * @param el Other factor.
+     * @return Product of this element and the input.
+     */
+    public PGroupElement mul(final PGroupElement el) {
+    // VECJ_PURE_JAVA_END
+
+    // VECJ_BEGIN
+    /**
+     * Simple implementation of elliptic curve addition in affine
+     * coordinates.
+     *
+     * @param el Element to multiply with.
+     * @return Product of this element and the input.
+     */
+    public PGroupElement affineMul(final PGroupElement el) {
+    // VECJ_END
+
+
+        if (!pGroup.equals(el.pGroup)) {
+            throw new ArithmError("Distinct groups!");
+        }
+
+        final ECqPGroupElement e = (ECqPGroupElement) el;
+
+        // If this instance is the unit element, then we return the
+        // input.
+        if (x.equals(MINUS_ONE)) {
+            return e;
+        }
+
+        // If the input is the unit element, then we return this
+        // instance.
+        if (e.x.equals(MINUS_ONE)) {
+            return this;
+        }
+
+        // If the input is the inverse of this element, then we return
+        // the unit element.
+        if (x.equals(e.x) && y.add(e.y).equals(getModulus())) {
+            return getPGroup().getONE();
+        }
+
+        // If the input is equal to this element, then we square this
+        // instance.
+        if (this.equals(e)) {
+            return square();
+        }
+
+        // Otherwise we perform multiplication of two points in
+        // general position.
+        LargeInteger s;
+        try {
+
+            // s = (y-e.y)/(x-e.x)
+            s = this.y.sub(e.y).
+                mul(this.x.sub(e.x).modInv(getModulus())).mod(getModulus());
+
+            // rx = s^2 - (x + e.x)
+            final LargeInteger rx =
+                s.mul(s).sub(this.x).sub(e.x).mod(getModulus());
+
+            // ry = -y - s(rx - x)
+            final LargeInteger ry =
+                this.y.neg().sub(s.mul(rx.sub(this.x))).mod(getModulus());
+
+            return new ECqPGroupElement(getPGroup(), rx, ry);
+
+        } catch (ArithmException ae) {
+            throw new ArithmError("Unexpected exception while inverting!",
+                                  ae);
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Unexpected exception while inverting!",
+                                  afe);
+        }
+    }
+
+    // VECJ_BEGIN
+
+    /**
+     * Compute the product of this element and the input.
+     *
+     * @param el Other factor.
+     * @return Product of this element and the input.
+     */
+    public PGroupElement mul(final PGroupElement el) {
+
+        if (!pGroup.equals(el.pGroup)) {
+            throw new ArithmError("Distinct groups!");
+        }
+
+        final byte[] x1a = x.toByteArray();
+        final byte[] y1a = y.toByteArray();
+
+        final byte[] x2a = ((ECqPGroupElement) el).x.toByteArray();
+        final byte[] y2a = ((ECqPGroupElement) el).y.toByteArray();
+
+        final ECqPGroup jECPGroup = (ECqPGroup) pGroup;
+
+        final byte[][] res =
+            VEC.add(jECPGroup.nativePointer, x1a, y1a, x2a, y2a);
+
+        try {
+            return new ECqPGroupElement(jECPGroup,
+                                        new LargeInteger(res[0]),
+                                        new LargeInteger(res[1]));
+
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Unable to create elliptic curve point!",
+                                  afe);
+        }
+    }
+
+    // VECJ_END
+
+    /**
+     * Compute the inverse of this element.
+     *
+     * @return Inverse of this element.
+     */
+    public PGroupElement inv() {
+        try {
+
+            // If this is the unit element, then we return this
+            // element.
+            if (x.equals(MINUS_ONE)) {
+                return this;
+            }
+
+            // If this element equals its inverse, then we return this
+            // element.
+            if (y.equals(LargeInteger.ZERO)) {
+                return this;
+            }
+
+            // Otherwise we mirror along the y-axis.
+            return new ECqPGroupElement(getPGroup(),
+                                        x,
+                                        y.neg().mod(getModulus()));
+
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Result not on curve!", afe);
+        }
+    }
+
+    // VECJ_PURE_JAVA_BEGIN
+
+    /**
+     * Compute the power of this element to the given exponent.
+     *
+     * @param exponent Exponent.
+     * @return Power of this element to the given exponent.
+     */
+    public PGroupElement exp(final LargeInteger exponent) {
+
+        PGroupElement res = getPGroup().getONE();
+
+        for (int i = exponent.bitLength(); i >= 0; i--) {
+            res = res.mul(res);
+            if (exponent.testBit(i)) {
+                res = mul(res);
+            }
+        }
+        return res;
+    }
+    // VECJ_PURE_JAVA_END
+
+    // VECJ_BEGIN
+
+    /**
+     * Compute the power of this element to the given exponent.
+     *
+     * @param exponent Exponent.
+     * @return Power of this element to the given exponent.
+     */
+    public PGroupElement exp(final LargeInteger exponent) {
+
+        final byte[] exponenta = exponent.toByteArray();
+
+        final byte[] xa = x.toByteArray();
+        final byte[] ya = y.toByteArray();
+
+        final ECqPGroup jECPGroup = (ECqPGroup) pGroup;
+
+        final byte[][] res =
+            VEC.mul(jECPGroup.nativePointer, xa, ya, exponenta);
+
+        try {
+            return new ECqPGroupElement(jECPGroup,
+                                        new LargeInteger(res[0]),
+                                        new LargeInteger(res[1]));
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Unable to create elliptic curve point!",
+                                  afe);
+        }
+    }
+
+    /**
+     * Compute the powers of this element to the given positive
+     * integer exponents.
+     *
+     * @param integers Exponents.
+     * @param bitLength Maximal bitlength of integer exponents.
+     * @return Powers of this element to the given exponents.
+     */
+    public PGroupElement[] exp(final LargeInteger[] integers,
+                               final int bitLength) {
+
+        final ECqPGroup jECPGroup = (ECqPGroup) pGroup;
+
+        // Perform precomputation.
+        final byte[] tablePtr =
+            VEC.fmul_precompute(jECPGroup.nativePointer,
+                                x.toByteArray(),
+                                y.toByteArray(),
+                                integers.length);
+
+        // Compute result.
+        final PGroupElement[] res = new PGroupElement[integers.length];
+
+        final ArrayWorker worker =
+            new ArrayWorker(res.length) {
+                @Override
+                public boolean divide() {
+                    return res.length > pGroup.expThreadThreshold;
+                }
+                @Override
+                public void work(final int start, final int end) {
+                    for (int i = start; i < end; i++) {
+
+                        byte[][] ress =
+                            VEC.fmul(jECPGroup.nativePointer,
+                                     tablePtr,
+                                     integers[i].toByteArray());
+                        res[i] = new ECqPGroupElement(jECPGroup,
+                                                      new LargeInteger(ress[0]),
+                                                      new LargeInteger(ress[1]),
+                                                      true);
+                    }
+                }
+            };
+        worker.work();
+
+        VEC.fmul_free(jECPGroup.nativePointer, tablePtr);
+
+        return res;
+    }
+    // VECJ_END
+
+    /**
+     * Represents the input integer in two's complement with fixed
+     * size.
+     *
+     * @param len Fixed length.
+     * @param x Integer to be represented.
+     * @return Representation of input integer.
+     */
+    protected byte[] innerToByteArray(final int len, final LargeInteger x) {
+
+        final byte[] res = new byte[len];
+
+        if (x.equals(MINUS_ONE)) {
+            Arrays.fill(res, (byte) 0xFF);
+        } else {
+            final byte[] tmp = x.toByteArray();
+            System.arraycopy(tmp, 0, res, res.length - tmp.length, tmp.length);
+        }
+        return res;
+    }
+
+    @Override
+    public int compareTo(final PGroupElement el) {
+        if (pGroup.equals(el.pGroup)) {
+            final ECqPGroupElement ecel = (ECqPGroupElement) el;
+            final int cmp = x.compareTo(ecel.x);
+            if (cmp == 0) {
+                return y.compareTo(ecel.y);
+            } else {
+                return cmp;
+            }
+        } else {
+            throw new ArithmError("Distinct groups!");
+        }
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof ECqPGroupElement)) {
+            return false;
+        }
+
+        final ECqPGroupElement other = (ECqPGroupElement) obj;
+        return pGroup.equals(other.pGroup)
+            && x.equals(other.x) && y.equals(other.y);
+    }
+
+    @Override
+    public ByteTree toByteTree() {
+
+        final PField primeOrderField = ((ECqPGroup) pGroup).primeOrderField;
+        final int byteLength = primeOrderField.getByteLength();
+
+        return new ByteTree(new ByteTree(innerToByteArray(byteLength, x)),
+                            new ByteTree(innerToByteArray(byteLength, y)));
+    }
+
+    /**
+     * Bijective map from the set of elements to arrays of bytes. This
+     * is not intended to be used for storing elements.
+     *
+     * @return Array of bytes representing a group element.
+     */
+    public byte[] toByteArray() {
+
+        final PField primeOrderField = ((ECqPGroup) pGroup).primeOrderField;
+
+        // We add one byte and use point compression.
+        byte[] res = innerToByteArray(primeOrderField.getByteLength() + 1, x);
+
+        if (!x.equals(MINUS_ONE) && y.neg().compareTo(y) < 0) {
+            res[0] = 1;
+        }
+        return res;
+    }
+
+    // Helper functions from here on.
+
+    @Override
+    public ECqPGroup getPGroup() {
+        return (ECqPGroup) super.getPGroup();
+    }
+
+    /**
+     * Returns the modulus of the underlying prime order field of the
+     * group to which this element belongs.
+     *
+     * @return Modulus of the underlying prime order field of the
+     * group to which this element belongs.
+     */
+    private LargeInteger getModulus() {
+        return getPGroup().getPrimeOrderField().getOrder();
+    }
+
+    /**
+     * Doubling of a point on the curve. Since we are using
+     * multiplicative notation throughout this is called squaring
+     * here.
+     *
+     * @return Square of this element.
+     */
+    public PGroupElement square() {
+
+        // If this element is the unit element, then we return the
+        // unit element.
+        if (x.equals(MINUS_ONE)) {
+            return getPGroup().getONE();
+        }
+
+        // If this element equals its inverse then we return the unit
+        // element.
+        if (y.equals(LargeInteger.ZERO)) {
+            return getPGroup().getONE();
+        }
+
+        try {
+
+            // s = (3x^2 + a) / 2y
+            final LargeInteger three = LargeInteger.TWO.add(LargeInteger.ONE);
+            LargeInteger s = x.mul(x).mod(getModulus());
+            s = three.mul(s).mod(getModulus());
+            s = s.add(getPGroup().getA()).mod(getModulus());
+
+            final LargeInteger tmp = y.add(y).modInv(getModulus());
+            s = s.mul(tmp).mod(getModulus());
+
+            // rx = s^2 - 2x
+            LargeInteger rx = s.mul(s).mod(getModulus());
+            rx = rx.sub(x.add(x)).mod(getModulus());
+
+            // ry = s(x - rx) - y
+            final LargeInteger ry = s.mul(x.sub(rx)).sub(y).mod(getModulus());
+
+            return new ECqPGroupElement(getPGroup(), rx, ry);
+
+        } catch (ArithmException ae) {
+            throw new ArithmError("Failed to invert!", ae);
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Result not on curve?", afe);
+        }
+    }
+
+    /**
+     * Creates the unit element.
+     *
+     * @param group Group of which the unit element is created.
+     * @return Unit element of the given group.
+     */
+    protected static ECqPGroupElement one(final ECqPGroup group) {
+        try {
+            return new ECqPGroupElement(group, MINUS_ONE, MINUS_ONE);
+        } catch (ArithmFormatException afe) {
+            throw new ArithmError("Unable to create unit element!", afe);
+        }
+    }
+
+    /**
+     * Checks whether the input represents the unit element in the
+     * group.
+     *
+     * @param x The x-coordinate of a point.
+     * @param y The y-coordinate of a point.
+     * @return True or false depending on the input represents the
+     * unit element or not.
+     */
+    protected static boolean isUnity(final LargeInteger x,
+                                     final LargeInteger y) {
+        return x.equals(MINUS_ONE) && y.equals(MINUS_ONE);
+    }
+
+    /**
+     * Returns the x coordinate of this element.
+     *
+     * @return The x coordinate of this element.
+     */
+    public LargeInteger getX() {
+        return x;
+    }
+
+    /**
+     * Returns the y coordinate of this element.
+     *
+     * @return The y coordinate of this element.
+     */
+    public LargeInteger getY() {
+        return y;
+    }
+}
