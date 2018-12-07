@@ -38,4 +38,4 @@ dist: .build.bstamp
 clean:
 	-$(MAKE) clean
 	@find . -name "*~" -delete
-	@rm -rf aclocal.m4 autom4te.cache config.guess config.log config.status config.sub configure install-sh m4 Makefile.in Makefile missing INSTALL py-compile verificatum-*.tar.gz checks/*.class preprocessor.m4 *.bstamp .*.bstamp
+	@rm -rf INSTALL aclocal.m4 autom4te.cache config.guess config.log config.status config.sub configure install-sh m4 Makefile.in Makefile missing INSTALL py-compile verificatum-*.tar.gz checks/*.class preprocessor.m4 *.bstamp .*.bstamp

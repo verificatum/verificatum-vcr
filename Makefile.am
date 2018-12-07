@@ -149,23 +149,23 @@ $(CLASSESROOT)/%.txt : $(PKGPATH)/%.txt
 $(JARFILE): .classes.stamp $(FILES_TXTNAMES) $(CLASSESROOT)/MANIFEST.MF
 	cd $(CLASSESROOT); $(JAR) cfm $@ MANIFEST.MF com; cp $@ ..
 
-# On some OS the JVM requires the flag "-d64" to use the 64-bit
-# JVM. Since we are using native code, which on such machines is
-# native 64-bit, we get a dynamic linking error unless we set this
-# JVM-flag correctly in our shell script wrappers.
-
-if BITS64
-   JVM_DATAMODEL=-d64 # 64-bit machine
-else
-   JVM_DATAMODEL=-d32 # 32-bit machine
-endif
+# Additional flags for the JVM. Historically this was used because the
+# implementors of JVM failed to handle 32-bit and 64-bit native
+# binaries correctly. They claim to handle it correctly now.
+#
+# if BITS64
+#    JVM_FLAGS=-d64 # 64-bit machine
+# else
+#    JVM_FLAGS=-d32 # 32-bit machine
+# endif
+JVM_FLAGS=
 
 # We generate M4 macros based on make/environment variables to be able
 # to generate our wrapper script with hardcoded paths to jars and
 # paths, and other values.
 scriptmacros.m4: preprocessor.m4
 	@printf "changequote([[[[[,]]]]])dnl\n" > scriptmacros.m4
-	@printf "define(M4_JVM_DATAMODEL, $(JVM_DATAMODEL))dnl\n" >> scriptmacros.m4
+	@printf "define(M4_JVM_FLAGS, $(JVM_FLAGS))dnl\n" >> scriptmacros.m4
 	@printf "define(M4_JVM_MEMORY_SIZE, $(JVM_MEMORY_SIZE))dnl\n" >> scriptmacros.m4
 	@printf "define(M4_VERSION, $(VERSION))dnl\n" >> scriptmacros.m4
 	@printf "define(M4_COMPLETE_VERSION, $(COMPLETE_VERSION))dnl\n" >> scriptmacros.m4
@@ -374,14 +374,14 @@ install-data-hook:
 	@echo ""
 	@echo "     $$ vog -rndinit RandomDevice /dev/urandom"
 	@echo ""
-	@echo " Please consult the README file before using the software."
+	@echo " Please consult the README.md file before using the software."
 	@echo " There is also comprehensive documentation in the form of"
 	@echo " white papers at https://www.verificatum.org."
 	@echo ""
 	@echo "================================================================"
 	@echo ""
 
-dist_noinst_DATA = README COPYING NEWS AUTHORS ChangeLog $(PKGPATH) .version.m4 .macros.m4 tools $(SRC)
+dist_noinst_DATA = README.md COPYING NEWS AUTHORS ChangeLog $(PKGPATH) .version.m4 .macros.m4 tools $(SRC)
 
 jar_DATA = $(JARFILE)
 dist_bin = $(files_script) $(BINDIR)/vcr-$(VERSION)-info

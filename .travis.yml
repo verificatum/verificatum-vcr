@@ -1,0 +1,13 @@
+sudo: required
+dist: xenial
+language: java
+jdk:
+  - openjdk10
+
+before_install:
+    - sudo apt-get update
+    - sudo apt-get install --yes m4 libgmp-dev
+    - git clone https://github.com/verificatum/verificatum-gmpmee.git; cd verificatum-gmpmee; make -f Makefile.build; ./configure; make; sudo make install; cd -; sudo /sbin/ldconfig
+
+script:
+    - make -f Makefile.build && ./configure && make && make check

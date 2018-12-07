@@ -21,7 +21,7 @@ AC_INIT([verificatum-vcr],
         [m4_esyscmd([m4 .version.m4])],
         [info@verificatum.com])
 AC_CANONICAL_SYSTEM # Must appear before AM_INIT_AUTOMAKE
-AM_INIT_AUTOMAKE([tar-ustar -Wall -Werror -Wno-portability])
+AM_INIT_AUTOMAKE([foreign tar-ustar -Wall -Werror -Wno-portability])
 AC_CONFIG_MACRO_DIR([m4])
 
 # We require specific versions of the VMGJ and VECJ packages for

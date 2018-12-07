@@ -24,12 +24,6 @@
 # avoid this problem. THE WEIRD-LOOKING DOT IN THE PATH IS REALLY
 # NEEDED.
 
-dnl The M4_JVM_DATAMODEL is replaced by -d32 or -d64, by an m4
-dnl macro. The value used depends on the native wordlength. This is
-dnl *necessary* in some OS, e.g., Solaris, since the JVM otherwise
-dnl tries to execute in 32-bit mode instead of 64-bit mode. It is not
-dnl needed in Linux or FreeBSD.
-dnl
 # Add the particular jar files we use.
 export CLASSPATH=M4_ALL_JAR:${CLASSPATH}
 
@@ -63,7 +57,7 @@ fi
 VERIFICATUM_VOG=${VERIFICATUM_VOG}:VERIFICATUM_VOG_BUILTIN
 
 java \
-M4_JVM_DATAMODEL \
+M4_JVM_FLAGS \
 -Djava.security.egd=file:/dev/./urandom \
 com.verificatum.ui.gen.GeneratorTool \
 "$COMMAND_NAME" \
