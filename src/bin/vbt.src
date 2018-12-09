@@ -30,6 +30,5 @@ COMMAND_NAME=${COMMAND_NAME##*/}
 
 java \
 M4_JVM_FLAGS \
-M4_JVM_MEMORY_SIZE \
 -Djava.security.egd=file:/dev/./urandom \
 com.verificatum.eio.ByteTreeTool "$COMMAND_NAME" "$@"

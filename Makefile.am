@@ -73,11 +73,6 @@ JDK_DOC="http://docs.oracle.com/javase/8/docs/api"
 # need to forward their library paths to our wrapper scripts.
 export LD_LIBRARY_PATH := $(LD_LIBRARY_PATH_VMGJ):$(LD_LIBRARY_PATH_VECJ):$(libdir)
 
-# Amount of memory used by the JVM. Our software execute in less than
-# 2GB, so this is conservative.
-#JVM_MEMORY_SIZE=-Xms1024m -Xmx6000m
-JVM_MEMORY_SIZE=-Xmx3000m
-
 # Choose wether to use VMGJ or not.
 if VMGJ
    USE_VMGJ = USE_VMGJ
@@ -158,6 +153,10 @@ $(JARFILE): .classes.stamp $(FILES_TXTNAMES) $(CLASSESROOT)/MANIFEST.MF
 # else
 #    JVM_FLAGS=-d32 # 32-bit machine
 # endif
+#
+# Amount of memory used by the JVM. Our software execute in less than
+# 2GB, so this is conservative.
+# JVM_FLAGS=-Xms1024m -Xmx6000m
 JVM_FLAGS=
 
 # We generate M4 macros based on make/environment variables to be able
@@ -166,7 +165,6 @@ JVM_FLAGS=
 scriptmacros.m4: preprocessor.m4
 	@printf "changequote([[[[[,]]]]])dnl\n" > scriptmacros.m4
 	@printf "define(M4_JVM_FLAGS, $(JVM_FLAGS))dnl\n" >> scriptmacros.m4
-	@printf "define(M4_JVM_MEMORY_SIZE, $(JVM_MEMORY_SIZE))dnl\n" >> scriptmacros.m4
 	@printf "define(M4_VERSION, $(VERSION))dnl\n" >> scriptmacros.m4
 	@printf "define(M4_COMPLETE_VERSION, $(COMPLETE_VERSION))dnl\n" >> scriptmacros.m4
 	@printf "define(M4_BINDIR, $(bindir))dnl\n" >> scriptmacros.m4
@@ -313,8 +311,6 @@ cobertura: $(JARFILE) $(files_script)
 --ignoreMethodAnnotation com.verificatum.annotation.CoberturaIgnore \
 --destination $(COBDIR)/classes $(COBERTURA_CLASSES)
 	CLASSPATH=$(COBCLASSPATH):$(COBDIR)/classes:$(CLASSESROOT) java \
--d64  \
--Xmx3000m \
 -Djava.security.egd=file:/dev/./urandom \
 -Djavax.accessibility.assistive_technologies=java.lang.String \
 -ea \
