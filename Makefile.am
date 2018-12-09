@@ -115,7 +115,7 @@ excerr_classnames = $(shell find $(PKGPATH) -name "*.java" -o -name "*.magic" \
 
 ############################## Compiling ####################################
 
-all: $(JARFILE)
+all: jar scripts
 
 # Create the destination directory.
 $(CLASSESROOT) :
@@ -129,20 +129,21 @@ $(CLASSESROOT)/MANIFEST.MF: $(CLASSESROOT) $(MFSRC)/MANIFEST.MF.src
 %.java : %.magic preprocessor.m4
 	cat preprocessor.m4 $< | m4 > $@
 
-# Compile all Java files.
-.classes.stamp: $(CLASSESROOT) $(FILES_JAVANAMES)
-	$(JAVAC) -version
-	$(JAVAC) -Xlint:unchecked -classpath $(CLASSPATH) -d $(CLASSESROOT) $(AM_JAVACFLAGS) $(JAVACFLAGS) $(FILES_JAVANAMES)
-	@touch .classes.stamp
-
 # Makefile-rule for copying resource files of classes to the right
 # location.
 $(CLASSESROOT)/%.txt : $(PKGPATH)/%.txt
 	mkdir -p $(@D)
 	cp $< $(@D)
 
+# Compile all Java files.
+.classes.stamp: $(CLASSESROOT) $(FILES_TXTNAMES) $(FILES_JAVANAMES)
+	$(JAVAC) -version
+	$(JAVAC) -Xlint:unchecked -classpath $(CLASSPATH) -d $(CLASSESROOT) $(AM_JAVACFLAGS) $(JAVACFLAGS) $(FILES_JAVANAMES)
+	@touch .classes.stamp
+
 # Build JAR file.
-$(JARFILE): .classes.stamp $(FILES_TXTNAMES) $(CLASSESROOT)/MANIFEST.MF
+jar : $(JARFILE)
+$(JARFILE): .classes.stamp $(CLASSESROOT)/MANIFEST.MF
 	cd $(CLASSESROOT); $(JAR) cfm $@ MANIFEST.MF com; cp $@ ..
 
 # Additional flags for the JVM. Historically this was used because the
