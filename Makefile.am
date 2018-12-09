@@ -131,6 +131,7 @@ $(CLASSESROOT)/MANIFEST.MF: $(CLASSESROOT) $(MFSRC)/MANIFEST.MF.src
 
 # Compile all Java files.
 .classes.stamp: $(CLASSESROOT) $(FILES_JAVANAMES)
+	$(JAVAC) -version
 	$(JAVAC) -Xlint:unchecked -classpath $(CLASSPATH) -d $(CLASSESROOT) $(AM_JAVACFLAGS) $(JAVACFLAGS) $(FILES_JAVANAMES)
 	@touch .classes.stamp
 
