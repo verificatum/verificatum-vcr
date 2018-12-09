@@ -115,25 +115,16 @@ excerr_classnames = $(shell find $(PKGPATH) -name "*.java" -o -name "*.magic" \
 
 ############################## Compiling ####################################
 
-all: $(JARFILE)
-
-# Create the destination directory.
-$(CLASSESROOT) :
-	mkdir -p $(CLASSESROOT)
+all: jar scripts
 
 # Generate Jar manifest with current version.
-$(CLASSESROOT)/MANIFEST.MF: $(CLASSESROOT) $(MFSRC)/MANIFEST.MF.src
-	cat .macros.m4 $(MFSRC)/MANIFEST.MF.src | m4 > $(CLASSESROOT)/MANIFEST.MF
+$(CLASSESROOT)/MANIFEST_NM.MF: $(MFSRC)/MANIFEST.MF.src
+	mkdir -p $(@D)
+	cat .macros.m4 $(MFSRC)/MANIFEST.MF.src | m4 > $(CLASSESROOT)/MANIFEST_NM.MF
 
 # Pre-processing rule for generating .java-files from .magic-files.
 %.java : %.magic preprocessor.m4
 	cat preprocessor.m4 $< | m4 > $@
-
-# Compile all Java files.
-.classes.stamp: $(CLASSESROOT) $(FILES_JAVANAMES)
-	$(JAVAC) -version
-	$(JAVAC) -Xlint:unchecked -classpath $(CLASSPATH) -d $(CLASSESROOT) $(AM_JAVACFLAGS) $(JAVACFLAGS) $(FILES_JAVANAMES)
-	@touch .classes.stamp
 
 # Makefile-rule for copying resource files of classes to the right
 # location.
@@ -141,8 +132,18 @@ $(CLASSESROOT)/%.txt : $(PKGPATH)/%.txt
 	mkdir -p $(@D)
 	cp $< $(@D)
 
-# Build JAR file.
-$(JARFILE): .classes.stamp $(FILES_TXTNAMES) $(CLASSESROOT)/MANIFEST.MF
+# Compile all Java files.
+.classes.stamp: $(FILES_TXTNAMES) $(FILES_JAVANAMES)
+	mkdir -p $(CLASSESROOT)
+	$(JAVAC) -version
+	$(JAVAC) -Xlint:unchecked -classpath $(CLASSPATH) -d $(CLASSESROOT) $(AM_JAVACFLAGS) $(JAVACFLAGS) $(FILES_JAVANAMES)
+	@touch .classes.stamp
+
+# Build JAR file. The designers of JAR have decided to change the
+# manifest, so we need to make a copy to avoid a spurious dependency.
+jar : $(JARFILE)
+$(JARFILE): .classes.stamp $(CLASSESROOT)/MANIFEST_NM.MF
+	cp $(CLASSESROOT)/MANIFEST_NM.MF $(CLASSESROOT)/MANIFEST.MF
 	cd $(CLASSESROOT); $(JAR) cfm $@ MANIFEST.MF com; cp $@ ..
 
 # Additional flags for the JVM. Historically this was used because the
