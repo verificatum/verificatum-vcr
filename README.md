@@ -10,13 +10,17 @@ https://www.verificatum.org.
 For improved efficiency, the most time critical parts can optionally
 be linked to routines in:
 
-* The GNU MP library (GMP) and the GMP Modular Exponentiation
-  Extension (GMPMEE) library, using Verificatum Multiplicative
-  Group library for Java (VMGJ),
+* The GNU MP library (GMP) and the [GMP Modular Exponentiation
+  Extension
+  (GMPMEE)](https://github.com/verificatum/verificatum-gmpmee)
+  library, using [Verificatum Multiplicative Group library for Java
+  (VMGJ)](https://github.com/verificatum/verificatum-vmgj),
 
-* The Verificatum Elliptic Curve library (VEC), using the Verificatum
-  Elliptic Curve library for Java (VECJ), which is based on the GNU MP
-  library (GMP).
+* The [Verificatum Elliptic Curve library
+  (VEC)](https://github.com/verificatum/verificatum-vec), using the
+  [Verificatum Elliptic Curve library for Java
+  (VECJ)](https://github.com/verificatum/verificatum-vecj), which is
+  based on the GNU MP library (GMP).
 
 The overhead for making native calls is very small in the context of
 modular exponentiations and scalar multiplications in elliptic
@@ -168,7 +172,7 @@ version is used, then the configure flags are simply dropped.
 ## Usage
 
 Comprehensive documentation ready for printing can be downloaded at
-<https://www.verificatum.org>.
+https://www.verificatum.org.
 
 ## API Documentation
 
