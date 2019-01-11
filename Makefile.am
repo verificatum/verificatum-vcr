@@ -76,7 +76,7 @@ export LD_LIBRARY_PATH := $(LD_LIBRARY_PATH_VMGJ):$(LD_LIBRARY_PATH_VECJ):$(libd
 # Choose wether to use VMGJ or not.
 if VMGJ
    USE_VMGJ = USE_VMGJ
-   VMGJGREP = --invert-match MillerRabin
+   VMGJGREP = -v MillerRabin
 else
    USE_VMGJ = USE_PURE_JAVA
    VMGJGREP = .
@@ -105,7 +105,7 @@ files_script = $(shell find $(SRC_BINDIR) -name "*.src" \
 | sed -e s£\\.src££g | sed -e s£$(SRC_BINDIR)£$(BINDIR)£| tr "\n" " ")
 
 # Space separated list of all test classes implementing unit tests.
-TEST_CLASSNAMES=`cat test_classnames | tr "\n" " " | sed "s/\s\s*/ /"`
+TEST_CLASSNAMES=$(shell cat test_classnames | tr "\n" " " | sed "s/[[:space:]][[:space:]]*/ /")
 
 # Space separated list of all test classes implementing unit tests.
 excerr_classnames = $(shell find $(PKGPATH) -name "*.java" -o -name "*.magic" \
@@ -146,18 +146,8 @@ $(JARFILE): .classes.stamp $(CLASSESROOT)/MANIFEST_NM.MF
 	cp $(CLASSESROOT)/MANIFEST_NM.MF $(CLASSESROOT)/MANIFEST.MF
 	cd $(CLASSESROOT); $(JAR) cfm $@ MANIFEST.MF com; cp $@ ..
 
-# Additional flags for the JVM. Historically this was used because the
-# implementors of JVM failed to handle 32-bit and 64-bit native
-# binaries correctly. They claim to handle it correctly now.
-#
-# if BITS64
-#    JVM_FLAGS=-d64 # 64-bit machine
-# else
-#    JVM_FLAGS=-d32 # 32-bit machine
-# endif
-#
-# Amount of memory used by the JVM. Our software execute in less than
-# 2GB, so this is conservative.
+# Additional flags for the JVM.  Amount of memory used by the JVM. Our
+# software execute in less than 2GB, so this is conservative.
 # JVM_FLAGS=-Xms1024m -Xmx6000m
 JVM_FLAGS=
 
@@ -379,7 +369,7 @@ install-data-hook:
 	@echo "================================================================"
 	@echo ""
 
-dist_noinst_DATA = README.md COPYING NEWS AUTHORS ChangeLog $(PKGPATH) .version.m4 .macros.m4 tools $(SRC)
+dist_noinst_DATA = README.md COPYING NEWS AUTHORS ChangeLog $(PKGPATH) .version.m4 .macros.m4 tools $(SRC) test_classnames
 
 jar_DATA = $(JARFILE)
 dist_bin = $(files_script) $(BINDIR)/vcr-$(VERSION)-info

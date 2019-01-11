@@ -27,10 +27,8 @@
 #
 # WARNING! Only use this command for best effort information purposes.
 
-ERRORFILE=`date | sed "s/\s\s*//g"`
+ERRORFILE=`date | sed "s/[[:space:]][[:space:]]*//g"`
 {
-
-
 
 UNAME=`uname -a`
 
@@ -63,7 +61,7 @@ then
     linux_count_cpuinfo_fields CORES "core id"
 
     MULT=`echo "${PROC} / ${CORES}" | bc`
-    if !( test ${MULT} = 1 );
+    if ! ( test ${MULT} = 1 );
     then
 	CORESxTHREADS="${CORES}"
     else
@@ -87,7 +85,7 @@ then
     if test x$FREQUENCYRAW = x;
     then
 	FREQUENCYRAW=`sysctl -n hw.model | sed "s/.*@ \(.*\)GHz/\1/"`
-	if !( test x$FREQUENCYRAW = x );
+	if ! ( test x$FREQUENCYRAW = x );
 	then
 	    FREQUENCYRAW=`echo "$FREQUENCYRAW * 1000" | bc -l`
 	fi
@@ -105,6 +103,27 @@ then
     else
 	CORESxTHREADS="${CORES}x2"
     fi
+
+elif test $OSNAME = "OpenBSD";
+then
+
+    OS="OpenBSD $KERNEL"
+    MODELRAW=`sysctl -n hw.model`
+    MODEL=`echo $MODELRAW | sed -e "s/@.*//" | sed "s/ CPU//"`
+    FREQUENCYRAW=`sysctl -n hw.cpuspeed`
+    if test x$FREQUENCYRAW = x;
+    then
+	FREQUENCYRAW=0
+    fi
+    CPUFREQGHz=`echo "scale=2; $FREQUENCYRAW / 1000" | bc`
+    CORES=`sysctl -n hw.ncpu`
+    CHECKHTT=`cat /var/run/dmesg.boot | grep SMT`
+    if test x$CHECKHTT = x;
+    then
+	CORESxTHREADS="${CORES}"
+    else
+	CORESxTHREADS="${CORES}x2"
+    fi 
 fi
 
 if test "x${OS}" = x;

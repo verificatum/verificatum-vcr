@@ -41,7 +41,7 @@ AC_ARG_ENABLE([$2],
             fi
 
             # Make sure that the info command exists.
-            if !( command -v ${$2_INFO_COMMAND} > /dev/null 2>&1 );
+            if ! ( command -v ${$2_INFO_COMMAND} > /dev/null 2>&1 );
             then
                 AC_MSG_ERROR([No info command ${$2_INFO_COMMAND} can be found!])
             fi

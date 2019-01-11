@@ -28,8 +28,8 @@ AC_CONFIG_MACRO_DIR([m4])
 # security reasons. The version is verified both in terms of the name
 # of the jar file and the contents of the jar manifest file, so
 # renaming files will fail.
-VMGJ_VERSION=1.2.1
-VECJ_VERSION=2.1.4
+VMGJ_VERSION=1.2.2
+VECJ_VERSION=2.1.5
 
 # Checks for development tools we need.
 ACE_PROG_JAVAC
@@ -41,13 +41,7 @@ cd tools/installation
 javac TestLoadJar.java
 cd -
 
-# We need to figure out if we need to pass -J-d64 to javac.
-AM_CONDITIONAL([BITS64], [test x`getconf LONG_BIT` = x64])
-
 AC_CONFIG_FILES([Makefile])
-
-AM_CONDITIONAL([BITS64], [test x`getconf LONG_BIT` = x64])
-
 
 # Check that the right version of VMGJ is installed if enabled.
 ACE_MODULE([VMGJ],
