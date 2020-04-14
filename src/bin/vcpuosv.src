@@ -81,7 +81,7 @@ then
     OS="FreeBSD $KERNEL"
     MODELRAW=`sysctl -n hw.model`
     MODEL=`echo $MODELRAW | sed -e "s/@.*//" | sed "s/ CPU//"`
-    FREQUENCYRAW=`sysctl -n dev.cpu.0.freq`
+    FREQUENCYRAW=`sysctl -n dev.cpu.0.freq 2> /dev/null`
     if test x$FREQUENCYRAW = x;
     then
 	FREQUENCYRAW=`sysctl -n hw.model | sed "s/.*@ \(.*\)GHz/\1/"`
