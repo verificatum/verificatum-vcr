@@ -210,9 +210,9 @@ public abstract class ByteTreeBasic {
                 dos.writeBytes(is);
                 final byte[] data = btr.read();
                 final String hexData = Hex.toHexString(data);
-                dos.writeChar('"');
+                dos.writeByte('"');
                 dos.writeBytes(hexData);
-                dos.writeChar('"');
+                dos.writeByte('"');
 
             } else {
 
@@ -224,13 +224,13 @@ public abstract class ByteTreeBasic {
                     prettyWriteTo(indent + 1, dos, btr.getNextChild());
 
                     if (btr.getRemaining() > 0) {
-                        dos.writeChar(',');
+                        dos.writeByte(',');
                     }
 
-                    dos.writeChar('\n');
+                    dos.writeByte('\n');
                 }
                 dos.writeBytes(is);
-                dos.writeChar(']');
+                dos.writeByte(']');
             }
         } catch (final IOException ioe) {
             throw new EIOException(ioe.getMessage(), ioe);
