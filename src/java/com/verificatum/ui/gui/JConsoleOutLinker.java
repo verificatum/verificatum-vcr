@@ -100,6 +100,7 @@ public final class JConsoleOutLinker implements Runnable {
                     this.wait(100);
                 }
             } catch (final InterruptedException ie) {
+                Thread.currentThread().interrupt();
             }
 
             int len = 0;

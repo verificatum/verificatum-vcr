@@ -184,6 +184,7 @@ public final class SimpleHTTPServer {
                     try {
                         Thread.sleep(SOCKET_ATTEMPT_SLEEP);
                     } catch (final InterruptedException ie) {
+                        Thread.currentThread().interrupt();
                     }
                 }
             }

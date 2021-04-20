@@ -166,6 +166,7 @@ public abstract class PRG extends RandomSource {
             try {
                 Thread.sleep(SEED_GRAB_SLEEP);
             } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
             i++;
         }

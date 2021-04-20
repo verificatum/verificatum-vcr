@@ -858,6 +858,7 @@ public final class LargeIntegerArrayF extends LargeIntegerArray {
                 try {
                     Thread.sleep(100);
                 } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
 
@@ -884,6 +885,7 @@ public final class LargeIntegerArrayF extends LargeIntegerArray {
                 try {
                     Thread.sleep(100);
                 } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
             btw.close();

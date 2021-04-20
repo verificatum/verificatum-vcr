@@ -69,6 +69,7 @@ public final class Command {
                 try {
                     process.waitFor();
                 } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                     throw new UtilException("Native call was interrupted!", ie);
                 }
                 return new Pair<Integer, String>(process.exitValue(), output);

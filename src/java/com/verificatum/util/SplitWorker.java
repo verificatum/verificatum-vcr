@@ -121,6 +121,7 @@ public abstract class SplitWorker<T> {
             try {
                 return executor.invoke(callables);
             } catch (final InterruptedException ie) {
+                Thread.currentThread().interrupt();
                 throw new UtilError("Interrupted threaded computatation!", ie);
             }
 

@@ -172,11 +172,13 @@ public abstract class TestPRG extends TestClass {
         try {
             Thread.sleep(500);
         } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
         ExtIO.atomicWriteString(TempFile.getFile(), seedFile, sb.toString());
         try {
             thread.join();
         } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
         if (failed[0] != null) {
             throw new CryptoException(failed[0]);

@@ -232,6 +232,7 @@ public final class BullBoardBasicHTTPW extends BullBoardBasicHTTP {
                 try {
                     sleeper.wait();
                 } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
                 alive = false;
             }

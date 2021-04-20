@@ -80,6 +80,7 @@ public final class LargeIntegerBatchReader {
                 return integers;
             }
         } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
             throw new ArithmError("Failed to read next batch!", ie);
         }
     }
@@ -142,6 +143,7 @@ final class LargeIntegerBatchReaderThread extends Thread {
                 try {
                     Thread.sleep(LargeIntegerBatchReader.BATCH_SLEEP_TIME);
                 } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }

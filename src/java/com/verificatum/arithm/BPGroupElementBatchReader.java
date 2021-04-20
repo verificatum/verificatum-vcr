@@ -81,6 +81,7 @@ public final class BPGroupElementBatchReader {
                 return elements;
             }
         } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
             throw new ArithmError("Failed to read next batch!", ie);
         }
     }
@@ -152,6 +153,7 @@ final class BPGroupElementBatchReaderThread extends Thread {
                 try {
                     Thread.sleep(BPGroupElementBatchReader.BATCH_SLEEP_TIME);
                 } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }
