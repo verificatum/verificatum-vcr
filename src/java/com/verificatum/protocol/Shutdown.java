@@ -71,6 +71,7 @@ public final class Shutdown extends ProtocolBB {
             Thread.sleep(WAIT_FOR_OTHERS_TIME);
         } catch (final InterruptedException ie) {
             // User requested immediate shutdown. Do nothing.
+            Thread.currentThread().interrupt();
         }
         bullBoard.stop(log);
     }

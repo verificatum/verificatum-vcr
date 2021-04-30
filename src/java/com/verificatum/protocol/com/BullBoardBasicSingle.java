@@ -189,6 +189,7 @@ public final class BullBoardBasicSingle extends BullBoardBasic {
             try {
                 Thread.sleep(SLEEP_TIME);
             } catch (final InterruptedException ie) {
+                Thread.currentThread().interrupt();
             }
         }
     }

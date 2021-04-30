@@ -119,6 +119,7 @@ public final class HintServer implements Runnable {
                     try {
                         Thread.sleep(SOCKET_ATTEMPT_SLEEP);
                     } catch (final InterruptedException ie) {
+                        Thread.currentThread().interrupt();
                     }
                 }
             }

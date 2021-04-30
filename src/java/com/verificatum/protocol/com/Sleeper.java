@@ -57,6 +57,7 @@ public final class Sleeper extends Thread {
         try {
             Thread.sleep(waitTime);
         } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 }

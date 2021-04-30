@@ -67,6 +67,7 @@ public class BPGroupElementBatchWriter {
             try {
                 Thread.sleep(100);
             } catch (final InterruptedException ie) {
+                Thread.currentThread().interrupt();
             }
         }
 
@@ -92,6 +93,7 @@ public class BPGroupElementBatchWriter {
             try {
                 Thread.sleep(100);
             } catch (final InterruptedException ie) {
+                Thread.currentThread().interrupt();
             }
         }
         btw.close();
