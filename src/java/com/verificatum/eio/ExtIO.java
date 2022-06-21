@@ -300,7 +300,7 @@ public final class ExtIO {
      */
     public static void writeLong(final byte[] result,
                                  final int offset,
-                                 final int n) {
+                                 final long n) {
 
         int currentOffset = offset;
 
