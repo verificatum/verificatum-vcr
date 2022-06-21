@@ -445,6 +445,38 @@ public final class ByteTree extends ByteTreeBasic {
     }
 
     /**
+     * Translates an <code>long</code> value to a <code>ByteTree</code>
+     * representation.
+     *
+     * @param n The <code>long</code> value.
+     * @return Representation of <code>long</code> value.
+     */
+    public static ByteTree longToByteTree(final long n) {
+        final byte[] longBytes = new byte[8];
+        ExtIO.writeLong(longBytes, 0, n);
+        return new ByteTree(longBytes);
+    }
+
+    /**
+     * Translates a <code>ByteTree</code> to an <code>long</code> value
+     * if possible and throws an exception otherwise.
+     *
+     * @param bt Representation of the <code>long</code>.
+     * @return The <code>long</code> value represented by the input.
+     * @throws EIOException If the input does not represent an
+     *  <code>long</code>.
+     */
+    public static long byteTreeToLong(final ByteTree bt) throws EIOException {
+        if (bt.value == null) {
+            throw new EIOException(NO_DATA);
+        }
+        if (bt.value.length != 8) {
+            throw new EIOException("Wrong length!");
+        }
+        return ExtIO.readLong(bt.value, 0);
+    }
+
+    /**
      * Translates a <code>ByteTree</code> to an <code>int</code> value
      * if possible and throws an error otherwise. WARNING! This method
      * assumes that the input <code>ByteTree</code> is correctly

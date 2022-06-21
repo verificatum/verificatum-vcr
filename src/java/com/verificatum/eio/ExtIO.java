@@ -292,6 +292,30 @@ public final class ExtIO {
     }
 
     /**
+     * Writes an <code>int</code> as four bytes.
+     *
+     * @param result Destination array.
+     * @param offset Index where to start writing.
+     * @param n Value to write.
+     */
+    public static void writeLong(final byte[] result,
+                                 final int offset,
+                                 final int n) {
+
+        int currentOffset = offset;
+
+        result[currentOffset++] = (byte) (n >>> 56 & 0xff);
+        result[currentOffset++] = (byte) (n >>> 48 & 0xff);
+        result[currentOffset++] = (byte) (n >>> 40 & 0xff);
+        result[currentOffset++] = (byte) (n >>> 32 & 0xff);
+
+        result[currentOffset++] = (byte) (n >>> 24 & 0xff);
+        result[currentOffset++] = (byte) (n >>> 16 & 0xff);
+        result[currentOffset++] = (byte) (n >>> 8 & 0xff);
+        result[currentOffset] = (byte) (n & 0xff);
+    }
+
+    /**
      * Reads a <code>long</code> from a <code>byte[]</code>.
      *
      * @param bytes Source of the long integer.
