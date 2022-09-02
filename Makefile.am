@@ -140,16 +140,16 @@ $(CLASSESROOT)/%.txt : $(PKGPATH)/%.txt
 	cp $< $(@D)
 
 # Compile all Java files.
-.classes.stamp: $(FILES_TXTNAMES) $(FILES_JAVANAMES)
+classes.stamp: $(FILES_TXTNAMES) $(FILES_JAVANAMES)
 	mkdir -p $(CLASSESROOT)
 	$(JAVAC) -version
 	$(JAVAC) -Xlint:unchecked -classpath $(CLASSPATH) -d $(CLASSESROOT) $(AM_JAVACFLAGS) $(JAVACFLAGS) $(FILES_JAVANAMES)
-	@touch .classes.stamp
+	@touch classes.stamp
 
 # Build JAR file. The designers of JAR have decided to change the
 # manifest, so we need to make a copy to avoid a spurious dependency.
 jar : $(JARFILE)
-$(JARFILE): .classes.stamp $(CLASSESROOT)/MANIFEST_NM.MF
+$(JARFILE): classes.stamp $(CLASSESROOT)/MANIFEST_NM.MF
 	cp $(CLASSESROOT)/MANIFEST_NM.MF $(CLASSESROOT)/MANIFEST.MF
 	cd $(CLASSESROOT); $(JAR) cfm $@ MANIFEST.MF com; cp $@ ..
 
@@ -340,7 +340,7 @@ coverage: jcov cobertura
 check: runtests
 
 # Verifying non-interactive classes.
-runtests: $(BINDIR)/vtest .classes.stamp
+runtests: $(BINDIR)/vtest classes.stamp
 	@rm -rf $(TMP_TEST_DIR)
 	@mkdir -p $(TMP_TEST_DIR)
 	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH) CLASSPATH=$(CLASSPATH) \
@@ -409,4 +409,4 @@ cleancoverage: cleanjcov cleancobertura
 
 clean-local: cleanapi cleananalysis cleancoverage
 	find . -name "*~" -delete
-	@rm -rf verificatum-vcr*.tar $(INSTA)/*.class $(files_script) scriptmacros.m4 $(JARFILE) $(TMP_TEST_DIR) $(TMP_DEMO_DIR) $(PREPROCESSED_JAVANAMES) $(APIROOT) $(CLASSESROOT) *.stamp .*.stamp compile $(BINDIR)/vcr-$(VERSION)-info
+	@rm -rf verificatum-vcr*.tar $(INSTA)/*.class $(files_script) scriptmacros.m4 $(JARFILE) $(TMP_TEST_DIR) $(TMP_DEMO_DIR) $(PREPROCESSED_JAVANAMES) $(APIROOT) $(CLASSESROOT) *.stamp compile $(BINDIR)/vcr-$(VERSION)-info

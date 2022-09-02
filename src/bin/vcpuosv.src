@@ -49,6 +49,11 @@ linux_count_cpuinfo_fields() {
     eval "$1=\"\$FIELD\""
 }
 
+linux_get_cpuinfo_field() {
+    FIELD=`cat /proc/cpuinfo | grep "$2" | head -n 1 | sed "s/.*:[^0123456789]*\([0123456789][0123456789]*\)[^0123456].*/\1/"`
+    eval "$1=\"\$FIELD\""
+}
+
 linux_get_lscpu_field() {
     FIELD=`lscpu | grep "$2" | sed "s/.*:[^0123456789]*\([0123456789][0123456789]*\)[^0123456].*/\1/"`
     eval "$1=\"\$FIELD\""
@@ -64,7 +69,7 @@ then
     MODELRAW=`cat /proc/cpuinfo | grep "model name" | uniq | sed -e "s/.*: //"`
     MODEL=`echo $MODELRAW | sed -e "s/@.*//" | sed "s/ CPU//"`
     
-    linux_count_cpuinfo_fields PROC "processors"
+    linux_count_cpuinfo_fields PROC "processor"
     linux_count_cpuinfo_fields CORES "core id"
 
     MULT=`echo "${PROC} / ${CORES}" | bc`
@@ -80,6 +85,12 @@ then
     then
 	linux_get_lscpu_field CPUFREQMHz "CPU .*MHz"
     fi
+
+    if test x$CPUFREQMHz = x;
+    then
+       	linux_get_cpuinfo_field CPUFREQMHz "cpu .*MHz"
+    fi
+    
     CPUFREQGHz=`echo "${CPUFREQMHz} / 1000" | bc -l | sed "s/\([[:digit:]][[:digit:]]*\.[[:digit:]][[:digit:]]\).*/\1/"`
     
 elif test $OSNAME = "FreeBSD";
