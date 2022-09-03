@@ -28,11 +28,11 @@ package com.verificatum.ui.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Font;
-import java.awt.Label;
 import java.io.PipedOutputStream;
 import java.io.PrintStream;
 
 import javax.swing.JInternalFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -140,7 +140,7 @@ public final class JTextualUI extends JInternalFrame implements UI {
                             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         final JPanel ip = new JPanel(new BorderLayout());
-        ip.add(new Label("Interaction Area"), BorderLayout.NORTH);
+        ip.add(new JLabel("Interaction Area"), BorderLayout.NORTH);
         ip.add(interactionJSP, BorderLayout.CENTER);
         jSplitPane.setLeftComponent(ip);
 
@@ -150,7 +150,7 @@ public final class JTextualUI extends JInternalFrame implements UI {
                             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         final JPanel lp = new JPanel(new BorderLayout());
-        lp.add(new Label("Log file"), BorderLayout.NORTH);
+        lp.add(new JLabel("Log file"), BorderLayout.NORTH);
         lp.add(logJSP, BorderLayout.CENTER);
         jSplitPane.setRightComponent(lp);
 

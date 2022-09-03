@@ -49,7 +49,7 @@ import com.verificatum.ui.gui.JTextualUI;
  *
  * @author Douglas Wikstrom
  */
-public class DemoJFrame extends JFrame {
+public class DemoJFrame {
 
     /**
      *
