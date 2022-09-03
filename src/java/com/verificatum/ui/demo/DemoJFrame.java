@@ -72,6 +72,26 @@ public class DemoJFrame extends JFrame {
     protected JTextualUI[] uiArray;
 
     /**
+     * Top level pane which can be added to a window.
+     */
+    protected JScrollPane jScrollPane;
+
+    /**
+     * Title bar of top level window.
+     */
+    protected String titleBar;
+
+    /**
+     * Size of window if any is created.
+     */
+    protected Dimension jFrameSize;
+
+    /**
+     * Window if any is created.
+     */
+    protected JFrame jFrame;
+
+    /**
      * Creates an instance with the given number of simulated user
      * interfaces.
      *
@@ -79,27 +99,13 @@ public class DemoJFrame extends JFrame {
      * @param titleBar Titlebar of frame.
      */
     public DemoJFrame(final int k, final String titleBar) {
-        super("Demonstration: " + titleBar);
+        this.titleBar = titleBar;
 
-        // Use standard window decoration
-        setDefaultLookAndFeelDecorated(true);
-
-        final int inset = 50;
-        final Dimension screenSize =
-            Toolkit.getDefaultToolkit().getScreenSize();
-
-        setBounds(inset,
-                  inset,
-                  screenSize.width - inset * 2,
-                  screenSize.height - inset * 2);
-
-        setSize(new Dimension(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT));
+        jFrameSize = new Dimension(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
 
         final JDesktopPane jDesktopPane = new JDesktopPane();
 
         uiArray = new JTextualUI[k + 1];
-
-        final Dimension size = getSize();
 
         int xTotal = 0;
         int yTotal = 0;
@@ -117,7 +123,7 @@ public class DemoJFrame extends JFrame {
             uiArray[i].setVisible(true);
             jDesktopPane.add(uiArray[i]);
 
-            if (xLoc + internalSize.width > size.width) {
+            if (xLoc + internalSize.width > jFrameSize.width) {
                 xLoc = 0;
                 yLoc += internalSize.height;
             }
@@ -127,22 +133,10 @@ public class DemoJFrame extends JFrame {
         jPanel.setPreferredSize(new Dimension(xTotal, yTotal));
         jPanel.add(jDesktopPane, BorderLayout.CENTER);
 
-        final JScrollPane pane =
+        jScrollPane =
             new JScrollPane(jPanel,
                             ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
                             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
-        setContentPane(pane);
-
-        // Make sure we die if user closes the window using the OSs
-        // close button.
-        addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(final WindowEvent we) {
-                    System.exit(0);
-                }
-            });
-
-        pack();
     }
 
     /**
@@ -154,5 +148,60 @@ public class DemoJFrame extends JFrame {
      */
     public UI uiAt(final int i) {
         return uiArray[i];
+    }
+
+    /**
+     * Creates a window tied to the desktop and makes it visible. It
+     * is unfortunate that the JDK instantiates windows at the desktop
+     * level even when they are not made visible. This is a
+     * workaround.
+     *
+     * @param visible Determines if a window is created and visible or
+     * not.
+     */
+    public void setVisible(final boolean visible) {
+
+        if (visible) {
+
+            jFrame = new JFrame("Demonstration: " + titleBar);
+
+            // Use standard window decoration
+            jFrame.setDefaultLookAndFeelDecorated(true);
+
+            final int inset = 50;
+            final Dimension screenSize =
+                Toolkit.getDefaultToolkit().getScreenSize();
+
+            jFrame.setBounds(inset,
+                             inset,
+                             screenSize.width - inset * 2,
+                             screenSize.height - inset * 2);
+
+            jFrame.setSize(jFrameSize);
+
+            jFrame.setContentPane(jScrollPane);
+
+            // Make sure we die if user closes the window using the OSs
+            // close button.
+            jFrame.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(final WindowEvent we) {
+                        System.exit(0);
+                    }
+                });
+
+            jFrame.pack();
+
+            jFrame.setVisible(true);
+        }
+    }
+
+    /**
+     * Disposes of the window if any has been created.
+     */
+    public void dispose() {
+        if (jFrame != null) {
+            jFrame.dispose();
+        }
     }
 }
