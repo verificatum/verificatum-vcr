@@ -33,8 +33,8 @@ AC_CONFIG_MACRO_DIR([m4])
 # security reasons. The version is verified both in terms of the name
 # of the jar file and the contents of the jar manifest file, so
 # renaming files will fail.
-VMGJ_VERSION=1.2.2
-VECJ_VERSION=2.1.5
+VMGJ_VERSION=1.3.0
+VECJ_VERSION=2.2.0
 
 # Checks for development tools we need.
 ACE_PROG_JAVAC
