@@ -58,7 +58,7 @@ public abstract class ProtocolGen implements InfoGenerator {
     /**
      * Pattern for validation of names.
      */
-    public static final String NAME_PATTERN = "[A-Za-z][A-Za-z0-9_ ]{1,255}";
+    public static final String NAME_PATTERN = "[A-Za-z][A-Za-z0-9_ \\-]{1,255}";
 
     /**
      * Pattern for validation of description.
