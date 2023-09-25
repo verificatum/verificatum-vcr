@@ -82,8 +82,7 @@ public final class ByteTreeTool {
                       + "error prefix or newlines.");
         opt.addOption("-hex", "",
                       "Indicates that the input byte array is represented as "
-                      + "a hexadecimal string, possibly with a prefix ending "
-                      + "with \"::\".");
+                      + "a hexadecimal string.");
 
         opt.addOption("-version", "", "Print the package version.");
 
