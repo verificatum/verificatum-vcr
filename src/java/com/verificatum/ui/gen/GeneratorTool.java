@@ -425,7 +425,9 @@ public final class GeneratorTool {
             }
             return randomSource;
         } catch (final IOException ioe) {
-            throw new GenException("Unable to read random source file!", ioe);
+            throw new GenException("Unable to read random source file! "
+                                   + "Use \"vog -rndinit\".",
+                                   ioe);
         } catch (final EIOException eioe) {
             final String e =
                 "Unable to create random source! " + "Make sure that "

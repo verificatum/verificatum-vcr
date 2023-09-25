@@ -115,7 +115,8 @@ public abstract class RandomSource implements Marshalizable {
 
         } catch (final IOException ioe) {
             throw new CryptoException("Unable to read random source file! ("
-                                      + rsFile.toString() + ")",
+                                      + rsFile.toString() + ") "
+                                      + "Use \"vog -rndinit\".",
                                       ioe);
         } catch (final EIOException eioe) {
             final String e = "Unable to create random source! "
