@@ -124,11 +124,14 @@ public final class SimpleJSON {
 
         final String key = readString(head);
 
+        head.skipWhitespace();
+
         if (head.end() || head.getc() != ':') {
             throw new SimpleJSONException("Missing ':'!");
         }
-
         head.inc();
+
+        head.skipWhitespace();
 
         final String value = readString(head);
         map.put(key, value);
