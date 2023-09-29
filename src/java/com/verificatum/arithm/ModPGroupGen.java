@@ -164,6 +164,8 @@ public final class ModPGroupGen implements Generator {
             final String hexOrder = opt.getStringValue("order");
             order = new LargeInteger(hexOrder, 16);
 
+            System.out.println("q = " + hexOrder);
+
         } else {
 
             try {
@@ -193,7 +195,8 @@ public final class ModPGroupGen implements Generator {
         if (order.bitLength() < SafePrimeTable.MIN_BIT_LENGTH - 1) {
             final String s =
                 "Bit-length of order must be at least "
-                + (SafePrimeTable.MIN_BIT_LENGTH - 1) + "!";
+                + (SafePrimeTable.MIN_BIT_LENGTH - 1) + "! "
+                + "(" + order.bitLength() + ")";
             throw new GenException(s);
         }
 
