@@ -190,7 +190,7 @@ public final class ByteTreeTool {
             // Print the byte tree.
             final ByteTreeBasic btb = new ByteTreeF(file);
             final DataOutputStream dos = new DataOutputStream(System.out);
-            btb.prettyWriteTo(dos);
+            btb.writeJSONTo(dos);
             ExtIO.strictClose(dos);
 
         // PMD does not understand this.

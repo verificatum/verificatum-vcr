@@ -27,9 +27,13 @@
 package com.verificatum.eio;
 
 import java.io.DataOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.verificatum.crypto.Hashdigest;
 
@@ -196,9 +200,9 @@ public abstract class ByteTreeBasic {
      * @param btr Source for the byte tree.
      * @throws EIOException If the input is not a byte tree.
      */
-    private static void prettyWriteTo(final int indent,
-                                      final DataOutputStream dos,
-                                      final ByteTreeReader btr)
+    private static void writeJSONTo(final int indent,
+                                    final DataOutputStream dos,
+                                    final ByteTreeReader btr)
         throws EIOException {
 
         try {
@@ -221,7 +225,7 @@ public abstract class ByteTreeBasic {
 
                 while (btr.getRemaining() > 0) {
 
-                    prettyWriteTo(indent + 1, dos, btr.getNextChild());
+                    writeJSONTo(indent + 1, dos, btr.getNextChild());
 
                     if (btr.getRemaining() > 0) {
                         dos.writeByte(',');
@@ -241,14 +245,27 @@ public abstract class ByteTreeBasic {
      * Writes a formatted string representation of this byte tree. The
      * format is a recursive natural JSON array.
      *
+     * @param indent Number of indent blocks on each line.
      * @param dos Destination source.
      * @throws EIOException If the input is not a byte tree.
      */
-    public void prettyWriteTo(final DataOutputStream dos)
+    public void writeJSONTo(final int indent, final DataOutputStream dos)
         throws EIOException {
         final ByteTreeReader btr = getByteTreeReader();
-        prettyWriteTo(0, dos, btr);
+        writeJSONTo(indent, dos, btr);
         btr.close();
+    }
+
+    /**
+     * Writes a formatted string representation of this byte tree. The
+     * format is a recursive natural JSON array.
+     *
+     * @param dos Destination source.
+     * @throws EIOException If the input is not a byte tree.
+     */
+    public void writeJSONTo(final DataOutputStream dos)
+        throws EIOException {
+        writeJSONTo(0, dos);
     }
 
     /**
@@ -260,16 +277,116 @@ public abstract class ByteTreeBasic {
      * @throws EIOException If this instance can not be written to the
      *  given file.
      */
-    public void prettyWriteTo(final File file) throws EIOException {
+    public void writeJSONTo(final File file) throws EIOException {
         DataOutputStream dos = null;
         try {
             dos = new DataOutputStream(new FileOutputStream(file));
-            prettyWriteTo(dos);
+            writeJSONTo(dos);
         } catch (final IOException ioe) {
             throw new EIOException("Can not write byte tree to file! ("
                                    + file.toString() + ")", ioe);
         } finally {
             ExtIO.strictClose(dos);
+        }
+    }
+
+    /**
+     * Reads the rest of a hexadecimal string including the closing
+     * quotation mark.
+     *
+     * @param br Source of bytes.
+     * @return Hexadecimal string.
+     * @throws EIOException If a hexadecimal string cannot be read.
+     */
+    private static String readHexString(final BufferedReader br)
+    throws EIOException {
+
+        final ArrayList<Byte> buf = new ArrayList<Byte>();
+
+        int b;
+        try {
+            b = br.read();
+
+            while (48 <= b && b < 58 // 0-9
+                   || 97 <= b && b < 123) { // a-z
+
+                buf.add((byte)b);
+                b = br.read();
+            }
+        } catch (final IOException ioe) {
+            throw new EIOException("Unable to read string!", ioe);
+        }
+        ExtIO.expectByte(b, '"');
+
+        final byte[] bytes = new byte[buf.size()];
+        for (int i = 0; i < buf.size(); i++) {
+            bytes[i] = buf.get(i);
+        }
+        return new String(bytes, Charset.forName("US-ASCII"));
+    }
+
+    /**
+     * Reads a byte tree from its representation as a nested JSON
+     * array.
+     *
+     * @param br Source of bytes.
+     * @return Byte tree.
+     * @throws EIOException If a byte tree cannot be read.
+     */
+    public static ByteTreeBasic readJSONFrom(final BufferedReader br)
+    throws EIOException {
+
+        int b = ExtIO.readNextNonWhitespace(br);
+
+        if (b == '"') {
+
+            final String hexString = readHexString(br);
+            final byte[] bytes = Hex.toByteArray(hexString);
+            return new ByteTree(bytes);
+
+        } else if (b == '[') {
+
+            final List<ByteTreeBasic> childrenList =
+                new ArrayList<ByteTreeBasic>();
+
+            do {
+                childrenList.add(readJSONFrom(br));
+                b = ExtIO.readNextNonWhitespace(br);
+            } while (b == ',');
+
+            if (b == ']') {
+
+                final ByteTreeBasic[] children =
+                    childrenList.toArray(new ByteTreeBasic[0]);
+                return new ByteTreeContainer(children);
+
+            } else {
+                ExtIO.unexpectedByte(b);
+            }
+        } else {
+            ExtIO.unexpectedByte(b);
+        }
+        return null;
+    }
+
+    /**
+     * Reads a byte tree from its representation as a nested JSON
+     * array.
+     *
+     * @param file Source of bytes.
+     * @return Byte tree.
+     * @throws EIOException If a byte tree cannot be read.
+     */
+    public static ByteTreeBasic readJSONFrom(final File file)
+    throws EIOException {
+        BufferedReader br = null;
+        try {
+            br = ExtIO.getBufferedReader(file);
+            return readJSONFrom(br);
+        } catch (final IOException ioe) {
+            throw new EIOException("Unable to open file!", ioe);
+        } finally {
+            ExtIO.strictClose(br);
         }
     }
 

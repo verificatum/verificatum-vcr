@@ -943,4 +943,55 @@ public final class ExtIO {
         }
         return path.delete();
     }
+
+    /**
+     * Reads bytes until a non whitespace byte is encountered.
+     *
+     * @param br Source of bytes.
+     * @throws EIOException If reading fails.
+     */
+    public static int readNextNonWhitespace(final BufferedReader br)
+    throws EIOException {
+        int b;
+        try {
+            do {
+                b = br.read();
+            } while (Character.isWhitespace(b));
+        } catch (final IOException ioe) {
+            throw new EIOException("Unable to read byte!", ioe);
+        }
+
+        return b;
+    }
+
+    /**
+     * Throws an unexpected end of input or byte exception.
+     *
+     * @param b Byte or -1.
+     * @throws EIOException Representing the unexpected input.
+     */
+    public static void unexpectedByte(final int b)
+    throws EIOException {
+        if (b == -1) {
+            throw new EIOException("Unexpected end of input!");
+        } else {
+            throw new EIOException("Unexpected byte! (" + b + ")");
+        }
+    }
+
+    /**
+     * Throws an exception if the input byte is not as expected.
+     *
+     * @param b Byte or -1.
+     * @param expected Expected byte.
+     * @throws EIOException If the input byte is not the expected.
+     */
+    public static void expectByte(final int b, final int expected)
+    throws EIOException {
+        if (b == expected) {
+            return;
+        } else {
+            ExtIO.unexpectedByte(b);
+        }
+    }
 }
