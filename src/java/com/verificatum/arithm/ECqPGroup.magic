@@ -424,7 +424,6 @@ public final class ECqPGroup extends BPGroup {
                 LargeInteger.random(2 * approxBatchSize, modulus, statDist, rs);
             final LargeInteger[] rfxArray = new LargeInteger[rxArray.length];
 
-            final List<Integer> counts = new ArrayList<Integer>();
             final ArrayWorker rxWorker = new ArrayWorker(rfxArray.length) {
                 public boolean divide() {
                     return rfxArray.length > threshold;
@@ -434,22 +433,21 @@ public final class ECqPGroup extends BPGroup {
                     for (int i = start; i < end; i++) {
                         rfxArray[i] = equationf(rxArray[i]).value;
 
-                        if (rfxArray[i].legendre(modulus) == 1) {
-                            count++;
-                        } else {
+                        if (rfxArray[i].legendre(modulus) != 1) {
                             rxArray[i] = null;
                             rfxArray[i] = null;
                         }
                     }
-                    counts.add(count);
                 }
             };
             rxWorker.work();
 
             // Total number of valid x-coordinates.
             int count = 0;
-            for (final Integer countInteger : counts) {
-                count += countInteger.intValue();
+            for (int i = 0; i < rxArray.length; i++) {
+                if (rxArray[i] != null) {
+                    count++;
+                }
             }
             count = Math.min(remaining, count);
 
